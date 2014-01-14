@@ -2,15 +2,30 @@ package fi.otavanopisto.devtools.muikkuinstaller
 
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+@Grab(group='org.apache.commons', module='commons-lang3', version='3.0')
+import org.apache.commons.lang3.SystemUtils
 
 // CONFIGURATION
 
-def ECLIPSE_URL      = "http://ftp.snt.utwente.nl/pub/software/eclipse" +
-    "//technology/epp/downloads/release/kepler/SR1/" +
-    "eclipse-standard-kepler-SR1-win64-x86_64.zip"
-def ECLIPSE_FILENAME = "eclipse.zip"
-def ECLIPSE_DIRNAME  = "eclipse"
-def ECLIPSE_PLUGIN_INSTALL_COMMAND = """eclipsec.exe  
+if (SystemUtils.IS_OS_WINDOWS) {
+  ECLIPSE_URL      = "http://eclipse.mirror.triple-it.nl/technology/epp/" + 
+  											 "downloads/release/kepler/SR1/eclipse-standard-kepler" +
+                         "-SR1-win32-x86_64.zip"
+  ECLIPSE_FILENAME = "eclipse.zip"
+  ECLIPSE_DIRNAME  = "eclipse"
+  ECLIPSE_EXECUTABLE = "eclipsec.exe"
+  DIR_SEPARATOR = "\\"
+} else if (SystemUtils.IS_OS_LINUX) {
+	ECLIPSE_URL      = "http://eclipse.mirror.triple-it.nl/technology/epp/" + 
+												 "downloads/release/kepler/SR1/eclipse-standard-kepler" +
+                         "-SR1-linux-gtk-x86_64.tar.gz"
+  ECLIPSE_FILENAME = "eclipse.tar.gz"
+  ECLIPSE_DIRNAME  = "eclipse"
+  ECLIPSE_EXECUTABLE = "eclipse"
+  DIR_SEPARATOR = "/"
+}
+  
+ECLIPSE_PLUGIN_INSTALL_ARGS = """
 -application org.eclipse.equinox.p2.director
 -repository http://download.eclipse.org/releases/kepler/
 -repository http://download.jboss.org/jbosstools/updates/stable/kepler
@@ -43,8 +58,8 @@ def ECLIPSE_PLUGIN_INSTALL_COMMAND = """eclipsec.exe
 -installIU org.sonatype.m2e.buildhelper.feature.feature.group/0.15.0.201206251206
 -installIU org.jboss.tools.maven.apt.feature.feature.group/1.0.1.201209200721
 -installIU org.jboss.tools.maven.profiles.feature.feature.group/1.5.4.Final-v20131204-2329-B126
-"""
-def currentDir = new File(".").getCanonicalPath();
+""".replace('\n', ' ')
+BASEDIR = new File(".").getCanonicalPath();
 
 // UTILITY FUNCTIONS
 
@@ -55,8 +70,8 @@ def download(address, fname) {
   out.close()
 }
 
-def unzip(file, dest) {
-  def result = new ZipInputStream(new FileInputStream(file))
+def unzip(fname, dest) {
+  def result = new ZipInputStream(new FileInputStream(fname))
   def destFile = new File(dest)
   if(!destFile.exists()){
     destFile.mkdir();
@@ -83,8 +98,25 @@ def unzip(file, dest) {
   }
 }
 
+def uncompress(fname, dest) {
+  if (fname =~ /.*\.tar\.gz/) {
+    ["tar", "-xzf", fname].execute().waitFor()
+  } else if (fname =~ /.*\.zip/) {
+  	unzip(fname, dest)
+  }
+}
+
 // MAIN SCRIPT
 
+println "Downloading Eclipse..."
 download(ECLIPSE_URL, ECLIPSE_FILENAME)
-unzip(ECLIPSE_FILENAME, ECLIPSE_DIRNAME)
-def proc = (currentDir + "\\" + ECLIPSE_PLUGIN_INSTALL_COMMAND).execute()
+println "Uncompressing Eclipse..."
+uncompress(ECLIPSE_FILENAME, ECLIPSE_DIRNAME)
+println "Installing Eclipse plugins..."
+def proc = (BASEDIR +
+					  DIR_SEPARATOR +
+            ECLIPSE_DIRNAME +
+            DIR_SEPARATOR +
+            ECLIPSE_EXECUTABLE + " " +
+            ECLIPSE_PLUGIN_INSTALL_ARGS).execute()
+proc.in.eachLine { println it }
