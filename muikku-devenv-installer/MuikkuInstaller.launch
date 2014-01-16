@@ -21,7 +21,7 @@
 <listEntry value="/home/user/Software/eclipse-groovy/plugins/org.codehaus.groovy_2.0.7.xx-20130703-1600-e43-RELEASE/plugin_dsld_support/"/>
 </listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="org.codehaus.groovy.tools.GroovyStarter"/>
-<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--classpath &quot;${workspace_loc:/muikku-devenv-installer}/src:${workspace_loc:/muikku-devenv-installer}/bin&quot; --main groovy.ui.GroovyMain &quot;${resource_loc:/muikku-devenv-installer/src/fi/otavanopisto/devtools/muikkuinstaller/MuikkuInstaller.groovy}&quot;"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--classpath &quot;${workspace_loc:/muikku-devenv-installer}/src:${workspace_loc:/muikku-devenv-installer}/bin&quot; --main groovy.ui.GroovyMain &quot;${resource_loc:/muikku-devenv-installer/src/main/groovy/fi/otavanopisto/devtools/muikkuinstaller/MuikkuInstaller.groovy}&quot;"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="muikku-devenv-installer"/>
 <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dgroovy.home=&quot;${groovy_home}&quot; -Dmuikkudevenvinstaller.ask=&quot;true&quot;"/>
 <stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="${workspace_loc:/muikku-devenv-installer}/output/"/>

@@ -3,6 +3,7 @@ package fi.otavanopisto.devtools.muikkuinstaller
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils
 
 class SystemNotSupportedException extends Exception {
@@ -15,7 +16,9 @@ def cliOptions() {
   def cli = new CliBuilder(usage:INSTALLER_EXECUTABLE + " [options]",
   header: "Install Muikku development environment\n")
   cli.e('install Eclipse')
-  cli.p('install required plugins for Eclipse')
+  cli.E('install required plugins for Eclipse')
+  cli.j('download JBoss AS')
+  cli.J('configure JBoss AS')
   cli.h('print this message', longOpt: 'help')
 
   def commandLine = []
@@ -105,6 +108,48 @@ def configure() {
   -installIU org.jboss.tools.maven.apt.feature.feature.group/1.0.1.201209200721
   -installIU org.jboss.tools.maven.profiles.feature.feature.group/1.5.4.Final-v20131204-2329-B126
   """.replace('\n', ' ')
+  
+  
+  if (SystemUtils.IS_OS_WINDOWS) {
+   JBOSS_URL = "http://download.jboss.org/jbossas/7.1/jboss-as-7.1.1.Final/jboss-as-7.1.1.Final.zip"
+   JBOSS_FILENAME = "jboss.zip"
+   JBOSS_EXECUTABLE = "bin\\jboss-cli.bat" 
+   JBOSS_STANDALONE_EXECUTABLE = "bin\\standalone.bat"
+   JBOSS_ADDUSER_EXECUTABLE = "bin\\add-user.bat"
+  } else {
+   JBOSS_URL = "http://download.jboss.org/jbossas/7.1/jboss-as-7.1.1.Final/jboss-as-7.1.1.Final.tar.gz"
+   JBOSS_FILENAME = "jboss.tar.gz"
+   JBOSS_EXECUTABLE = "bin/jboss-cli.sh"
+   JBOSS_STANDALONE_EXECUTABLE = "bin/standalone.sh"
+   JBOSS_ADDUSER_EXECUTABLE = "bin/add-user.sh"
+  }
+  JBOSS_DIRNAME = "jboss-as-7.1.1.Final"
+  
+  JBOSS_CONFIGURE_SCRIPT = """
+  # Muikku CLI script
+  
+  connect
+  batch
+  
+  # System properties
+  
+  /system-property=muikku-plugin-libraries:add(value=${-> repository}/muikku-data/muikku-plugin-libraries.properties)
+  /system-property=muikku-plugin-repositories:add(value=${-> repository}/muikku-data/muikku-pluginrepositories.properties)
+  /system-property=muikku-data:add(value=${-> repository}/muikku-data/muikku-data.xml)
+  /system-property=muikku-deus-nex-machina-password:add(value=${-> dnmPassword})
+  
+  # Datasources
+  
+  data-source add --name=muikku --driver-name=mysql --driver-class=com.mysql.jdbc.Driver --connection-url=${-> connectionUrl} --jndi-name=java:/jdbc/muikku --user-name=${-> username} --password=${-> password} --use-ccm=false --jta=true --validate-on-match=false --background-validation=false --share-prepared-statements=false
+  data-source enable --name=muikku
+  data-source add --name=muikku-h2 --driver-name=h2 --driver-class=org.h2.Driver --connection-url=jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE --jndi-name=java:/jdbc/muikku-h2 --use-ccm=false --jta=false --use-java-context=true --min-pool-size=1 --max-pool-size=200 --check-valid-connection-sql="SELECT 1" --validate-on-match=true --background-validation=false --share-prepared-statements=false
+  
+  # Execute and reload
+  
+  run-batch
+  :reload
+  """
+  
   BASEDIR = new File(".").getCanonicalPath();
   return true
 }
@@ -160,18 +205,32 @@ def uncompress(fname, dest) throws SystemNotSupportedException {
   }
 }
 
+def runProgram(String progname) {
+  Process process = progname.execute()
+  new Thread(new Runnable() {public void run() {
+    IOUtils.copy(process.getInputStream(), System.out)
+  } } ).start()
+  new Thread(new Runnable() {public void run() {
+    IOUtils.copy(process.getErrorStream(), System.err)
+  } } ).start()
+  new Thread(new Runnable() {public void run() {
+    IOUtils.copy(System.in, process.getOutputStream())
+  } } ).start()
+  process.waitFor()
+}
+
 // MAIN SCRIPT
 try {
-  if (!cliOptions()) return
-    if (!configure()) return
+  if (!cliOptions()) {return}
+  if (!configure()) {return}
 
-    if (COMMAND_LINE_OPTS.e) {
-      println "Downloading Eclipse..."
-      download(ECLIPSE_URL, ECLIPSE_FILENAME)
-      println "Uncompressing Eclipse..."
-      uncompress(ECLIPSE_FILENAME, ECLIPSE_DIRNAME)
-    }
-  if (COMMAND_LINE_OPTS.p) {
+  if (COMMAND_LINE_OPTS.e) {
+    println "Downloading Eclipse..."
+    download(ECLIPSE_URL, ECLIPSE_FILENAME)
+    println "Uncompressing Eclipse..."
+    uncompress(ECLIPSE_FILENAME, ECLIPSE_DIRNAME)
+  }
+  if (COMMAND_LINE_OPTS.E) {
     println "Installing Eclipse plugins..."
     def eclipse_exc_path = ""
     if (COMMAND_LINE_OPTS.e) {
@@ -187,6 +246,59 @@ try {
     }
     def proc = (eclipse_exc_path + ECLIPSE_PLUGIN_INSTALL_ARGS).execute()
     proc.in.eachLine { println it }
+  }
+  if (COMMAND_LINE_OPTS.j) {
+    println "Installing JBoss AS..."
+    download(JBOSS_URL, JBOSS_FILENAME)
+    println "Uncompressing JBoss AS..."
+    uncompress(JBOSS_FILENAME, ".")
+  }
+  if (COMMAND_LINE_OPTS.J) {
+    println "Configuring JBoss AS..."
+    File tmpFile = File.createTempFile("temp", "cli");
+    tmpFile.deleteOnExit()
+    println "Please enter the absolute path to the root of Muikku Git repository"
+    repository = readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
+    println "Please enter the Deus Nex Machina password"
+    dnmPassword = readLine()
+    println "Please enter the database connection URL"
+    connectionUrl = readLine()
+    println "Please enter the database username"
+    username = readLine()
+    println "Please enter the database password"
+    password = readLine()
+    tmpFile.write(JBOSS_CONFIGURE_SCRIPT.toString().replace(/^\s+/, ""))
+    println "Creating "
+    println "Starting JBoss AS..."
+    def standaloneProc = (BASEDIR +
+      DIR_SEPARATOR +
+      JBOSS_DIRNAME +
+      DIR_SEPARATOR +
+      JBOSS_STANDALONE_EXECUTABLE).execute()
+    runProgram(BASEDIR +
+      DIR_SEPARATOR +
+      JBOSS_DIRNAME +
+      DIR_SEPARATOR +
+      JBOSS_ADDUSER_EXECUTABLE)
+    // Wait for JBoss to start
+    def br = new InputStreamReader(standaloneProc.inputStream)
+    while ((line = br.readLine()) != null)  
+    {  
+       if (line =~ /JBoss.*started/) {
+         break
+       } else {
+         println line
+       }
+    } 
+    println "Executing config commands..."
+    def cliProc = (BASEDIR +
+      DIR_SEPARATOR +
+      JBOSS_DIRNAME +
+      DIR_SEPARATOR +
+      JBOSS_EXECUTABLE +
+      " --file=${tmpFile.getAbsolutePath()}").execute()
+    cliProc.errorStream.eachLine { println it }
+    standaloneProc.outputStream.write(3) // Ctrl-C
   }
   println "Done."
 } catch (SystemNotSupportedException ex) {
