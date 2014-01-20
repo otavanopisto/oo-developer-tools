@@ -17,8 +17,9 @@ def cliOptions() {
   header: "Install Muikku development environment\n")
   cli.e('install Eclipse')
   cli.E('install required plugins for Eclipse')
-  cli.j('download JBoss AS')
+  cli.j('install JBoss AS')
   cli.J('configure JBoss AS')
+  cli.a('install and configure all')
   cli.h('print this message', longOpt: 'help')
 
   def commandLine = []
@@ -40,6 +41,13 @@ def cliOptions() {
   if (COMMAND_LINE_OPTS.h) {
     cli.usage()
     return false
+  }
+  
+  if (COMMAND_LINE_OPTS.a) {
+    COMMAND_LINE_OPTS.e = true
+    COMMAND_LINE_OPTS.E = true
+    COMMAND_LINE_OPTS.j = true
+    COMMAND_LINE_OPTS.J = true
   }
 
   return true
@@ -71,7 +79,7 @@ def configure() {
     ECLIPSE_EXECUTABLE = "eclipse"
     DIR_SEPARATOR = "/"
   } else {
-    throw new SystemNotSupportedException();
+    throw new SystemNotSupportedException()
   }
 
   ECLIPSE_PLUGIN_INSTALL_ARGS = """
@@ -228,17 +236,6 @@ def copyResourceToFile(String source, String target) {
     new File( target ).withOutputStream { fos ->
       fos << ris
     }
-  }
-}
-
-public static void mkDirs(File root, List<String> path) {
-  if (path.size() == 0) {
-    return;
-  } else {
-    File subdir = new File(root, path.get(0));
-    path.remove(0);
-    subdir.mkdir();
-    mkDirs(subdir, path);
   }
 }
 
