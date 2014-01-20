@@ -11,9 +11,9 @@ class SystemNotSupportedException extends Exception {
 
 // CONFIGURATION
 def cliOptions() {
-  INSTALLER_EXECUTABLE = "muikku-devenv-installer"
+  INSTALLER_EXECUTABLE = "java -jar muikku-devenv-installer.jar"
 
-  def cli = new CliBuilder(usage:INSTALLER_EXECUTABLE + " [options]",
+  def cli = new CliBuilder(usage:INSTALLER_EXECUTABLE + " [options] basedir",
   header: "Install Muikku development environment\n")
   cli.e('install Eclipse')
   cli.E('install required plugins for Eclipse')
@@ -36,18 +36,31 @@ def cliOptions() {
     commandLine = args
   }
 
-  COMMAND_LINE_OPTS = cli.parse(commandLine)
+  def opts = cli.parse(commandLine)
 
-  if (COMMAND_LINE_OPTS.h) {
+  if (opts.h) {
     cli.usage()
     return false
   }
   
-  if (COMMAND_LINE_OPTS.a) {
-    COMMAND_LINE_OPTS.e = true
-    COMMAND_LINE_OPTS.E = true
-    COMMAND_LINE_OPTS.j = true
-    COMMAND_LINE_OPTS.J = true
+  if (opts.a) {
+    INSTALL_ECLIPSE = true
+    CONFIGURE_ECLIPSE = true
+    INSTALL_JBOSS = true
+    CONFIGURE_JBOSS = true
+  } else {
+    INSTALL_ECLIPSE = opts.e
+    CONFIGURE_ECLIPSE = opts.E
+    INSTALL_JBOSS = opts.j
+    CONFIGURE_JBOSS = opts.J
+  }
+  
+  if (opts.arguments().size() > 0) {
+    BASEDIR = opts.arguments().get(0).replaceAll(DIR_SEPARATOR + /+$/, "")
+    BASEDIR = new File(BASEDIR).getCanonicalPath()
+  } else {
+    cli.usage()
+    return false
   }
 
   return true
@@ -162,7 +175,6 @@ def configure() {
   :shutdown
   """
   
-  BASEDIR = new File(".").getCanonicalPath();
   return true
 }
 
@@ -244,16 +256,22 @@ try {
   if (!cliOptions()) {return}
   if (!configure()) {return}
 
-  if (COMMAND_LINE_OPTS.e) {
+  if (INSTALL_ECLIPSE) {
     println "Downloading Eclipse..."
-    download(ECLIPSE_URL, ECLIPSE_FILENAME)
+    download(ECLIPSE_URL, BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME)
     println "Uncompressing Eclipse..."
-    uncompress(ECLIPSE_FILENAME, ECLIPSE_DIRNAME)
+    if (SystemUtils.IS_OS_WINDOWS) {
+      uncompress(BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME,
+                 BASEDIR + DIR_SEPARATOR + ECLIPSE_DIRNAME)
+    } else {
+      uncompress(BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME,
+                 BASEDIR)
+    }
   }
-  if (COMMAND_LINE_OPTS.E) {
+  if (CONFIGURE_ECLIPSE) {
     println "Installing Eclipse plugins..."
     def eclipse_exc_path = ""
-    if (COMMAND_LINE_OPTS.e) {
+    if (INSTALL_ECLIPSE) {
       eclipse_exc_path = BASEDIR +
           DIR_SEPARATOR +
           ECLIPSE_DIRNAME +
@@ -267,16 +285,16 @@ try {
     def proc = (eclipse_exc_path + ECLIPSE_PLUGIN_INSTALL_ARGS).execute()
     proc.in.eachLine { println it }
   }
-  if (COMMAND_LINE_OPTS.j) {
+  if (INSTALL_JBOSS) {
     println "Installing JBoss AS..."
-    download(JBOSS_URL, JBOSS_FILENAME)
+    download(JBOSS_URL, BASEDIR + DIR_SEPARATOR + JBOSS_FILENAME)
     println "Uncompressing JBoss AS..."
-    uncompress(JBOSS_FILENAME, ".")
+    uncompress(BASEDIR + DIR_SEPARATOR + JBOSS_FILENAME, BASEDIR)
   }
-  if (COMMAND_LINE_OPTS.J) {
+  if (CONFIGURE_JBOSS) {
     println "Configuring JBoss AS..."
     def jboss_path = ""
-    if (COMMAND_LINE_OPTS.j) {
+    if (INSTALL_JBOSS) {
       jboss_path = (BASEDIR +
         DIR_SEPARATOR +
         JBOSS_DIRNAME +
