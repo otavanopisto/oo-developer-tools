@@ -251,6 +251,18 @@ def copyResourceToFile(String source, String target) {
   }
 }
 
+def expect(Process proc, String regex) {
+  def br = new InputStreamReader(proc.inputStream)
+  def line
+  while ((line = br.readLine()) != null)
+  {
+    println line
+     if (line =~ regex) {
+       break
+     }
+  }
+}
+
 // MAIN SCRIPT
 try {
   if (!configure()) {return}
@@ -342,22 +354,16 @@ try {
     def standaloneProc = (jboss_path +
       JBOSS_STANDALONE_EXECUTABLE).execute()
     // Wait for JBoss to start
-    def br = new InputStreamReader(standaloneProc.inputStream)
-    while ((line = br.readLine()) != null)  
-    {  
-       if (line =~ /JBoss.*started/) {
-         break
-       } else {
-         println line
-       }
-    } 
+    expect(standaloneProc, /JBoss.*started/)
     println "Executing config commands..."
     def cliProc = (jboss_path +
       JBOSS_EXECUTABLE +
       " --file=${tmpFile.getAbsolutePath()}").execute()
     cliProc.in.eachLine { println it }
-    cliProc.waitFor()
-    standaloneProc.waitFor()
+    expect(cliProc, /{\s*"outcome"\s*=>.*?}/)
+    cliProc.waitForOrKill(100)
+    expect(standaloneProc, /JBoss.*stopped/)
+    standaloneProc.waitForOrKill(100)
   }
   println "Done."
 } catch (SystemNotSupportedException ex) {
