@@ -137,6 +137,10 @@ def configure() {
   /system-property=muikku-plugin-repositories:add(value=${-> repository}/muikku-data/muikku-pluginrepositories.properties)
   /system-property=muikku-data:add(value=${-> repository}/muikku-data/muikku-data.xml)
   /system-property=muikku-deus-nex-machina-password:add(value=${-> dnmPassword})
+
+  # MySQL JDBC Driver 
+
+  /subsystem=datasources/jdbc-driver=mysql:add(driver-name="mysql",driver-module-name="com.mysql.jdbc",driver-xa-datasource-class-name="com.mysql.jdbc.jdbc2.optional.MysqlXADataSource")
   
   # Datasources
   
@@ -219,6 +223,25 @@ def runProgram(String progname) {
   process.waitFor()
 }
 
+def copyResourceToFile(String source, String target) {
+  this.getClass().getResource( source ).withInputStream { ris ->
+    new File( target ).withOutputStream { fos ->
+      fos << ris
+    }
+  }
+}
+
+public static void mkDirs(File root, List<String> path) {
+  if (path.size() == 0) {
+    return;
+  } else {
+    File subdir = new File(root, path.get(0));
+    path.remove(0);
+    subdir.mkdir();
+    mkDirs(subdir, path);
+  }
+}
+
 // MAIN SCRIPT
 try {
   if (!cliOptions()) {return}
@@ -268,18 +291,42 @@ try {
     println "Please enter the database password"
     password = readLine()
     tmpFile.write(JBOSS_CONFIGURE_SCRIPT.toString().replace(/^\s+/, ""))
-    println "Creating "
+    println "Installing MySQL driver..."
+    new File(BASEDIR +
+      DIR_SEPARATOR +
+      JBOSS_DIRNAME +
+      DIR_SEPARATOR +
+      "modules" + DIR_SEPARATOR +
+      "com" + DIR_SEPARATOR +
+      "mysql" + DIR_SEPARATOR +
+      "jdbc" + DIR_SEPARATOR +
+      "main" + DIR_SEPARATOR).mkdirs()
+    copyResourceToFile("/resources/module.xml", BASEDIR +
+      DIR_SEPARATOR +
+      JBOSS_DIRNAME +
+      DIR_SEPARATOR +
+      "modules" + DIR_SEPARATOR +
+      "com" + DIR_SEPARATOR +
+      "mysql" + DIR_SEPARATOR +
+      "jdbc" + DIR_SEPARATOR +
+      "main" + DIR_SEPARATOR +
+      "module.xml")
+    copyResourceToFile("/resources/mysql-connector-java-5.1.18-bin.jar", BASEDIR +
+      DIR_SEPARATOR +
+      JBOSS_DIRNAME +
+      DIR_SEPARATOR +
+      "modules" + DIR_SEPARATOR +
+      "com" + DIR_SEPARATOR +
+      "mysql" + DIR_SEPARATOR +
+      "jdbc" + DIR_SEPARATOR +
+      "main" + DIR_SEPARATOR +
+      "mysql-connector-java-5.1.18-bin.jar")
     println "Starting JBoss AS..."
     def standaloneProc = (BASEDIR +
       DIR_SEPARATOR +
       JBOSS_DIRNAME +
       DIR_SEPARATOR +
       JBOSS_STANDALONE_EXECUTABLE).execute()
-    runProgram(BASEDIR +
-      DIR_SEPARATOR +
-      JBOSS_DIRNAME +
-      DIR_SEPARATOR +
-      JBOSS_ADDUSER_EXECUTABLE)
     // Wait for JBoss to start
     def br = new InputStreamReader(standaloneProc.inputStream)
     while ((line = br.readLine()) != null)  
@@ -297,7 +344,8 @@ try {
       DIR_SEPARATOR +
       JBOSS_EXECUTABLE +
       " --file=${tmpFile.getAbsolutePath()}").execute()
-    cliProc.errorStream.eachLine { println it }
+    cliProc.in.eachLine { println it }
+    cliProc.waitFor()
     standaloneProc.outputStream.write(3) // Ctrl-C
   }
   println "Done."
