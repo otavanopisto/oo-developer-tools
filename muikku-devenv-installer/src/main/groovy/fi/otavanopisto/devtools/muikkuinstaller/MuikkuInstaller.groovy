@@ -253,8 +253,8 @@ def copyResourceToFile(String source, String target) {
 
 // MAIN SCRIPT
 try {
-  if (!cliOptions()) {return}
   if (!configure()) {return}
+  if (!cliOptions()) {return}
 
   if (INSTALL_ECLIPSE) {
     println "Downloading Eclipse..."
