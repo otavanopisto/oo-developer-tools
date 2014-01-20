@@ -205,7 +205,7 @@ def uncompress(fname, dest) throws SystemNotSupportedException {
   } else if (fname =~ /.*\.zip/) {
     unzip(fname, dest)
   } else {
-    throw new SystemNotSupportedException();
+    throw new SystemNotSupportedException()
   }
 }
 
@@ -278,6 +278,17 @@ try {
   }
   if (COMMAND_LINE_OPTS.J) {
     println "Configuring JBoss AS..."
+    def jboss_path = ""
+    if (COMMAND_LINE_OPTS.j) {
+      jboss_path = (BASEDIR +
+        DIR_SEPARATOR +
+        JBOSS_DIRNAME +
+        DIR_SEPARATOR)
+    } else {
+      println "Please enter the path to JBoss directory"
+      jboss_path = (readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
+                    + DIR_SEPARATOR)
+    }
     File tmpFile = File.createTempFile("temp", "cli");
     tmpFile.deleteOnExit()
     println "Please enter the absolute path to the root of Muikku Git repository"
@@ -292,29 +303,20 @@ try {
     password = readLine()
     tmpFile.write(JBOSS_CONFIGURE_SCRIPT.toString().replace(/^\s+/, ""))
     println "Installing MySQL driver..."
-    new File(BASEDIR +
-      DIR_SEPARATOR +
-      JBOSS_DIRNAME +
-      DIR_SEPARATOR +
+    new File(jboss_path +
       "modules" + DIR_SEPARATOR +
       "com" + DIR_SEPARATOR +
       "mysql" + DIR_SEPARATOR +
       "jdbc" + DIR_SEPARATOR +
       "main" + DIR_SEPARATOR).mkdirs()
-    copyResourceToFile("/resources/module.xml", BASEDIR +
-      DIR_SEPARATOR +
-      JBOSS_DIRNAME +
-      DIR_SEPARATOR +
+    copyResourceToFile("/resources/module.xml", jboss_path +
       "modules" + DIR_SEPARATOR +
       "com" + DIR_SEPARATOR +
       "mysql" + DIR_SEPARATOR +
       "jdbc" + DIR_SEPARATOR +
       "main" + DIR_SEPARATOR +
       "module.xml")
-    copyResourceToFile("/resources/mysql-connector-java-5.1.18-bin.jar", BASEDIR +
-      DIR_SEPARATOR +
-      JBOSS_DIRNAME +
-      DIR_SEPARATOR +
+    copyResourceToFile("/resources/mysql-connector-java-5.1.18-bin.jar", jboss_path +
       "modules" + DIR_SEPARATOR +
       "com" + DIR_SEPARATOR +
       "mysql" + DIR_SEPARATOR +
@@ -322,10 +324,7 @@ try {
       "main" + DIR_SEPARATOR +
       "mysql-connector-java-5.1.18-bin.jar")
     println "Starting JBoss AS..."
-    def standaloneProc = (BASEDIR +
-      DIR_SEPARATOR +
-      JBOSS_DIRNAME +
-      DIR_SEPARATOR +
+    def standaloneProc = (jboss_path +
       JBOSS_STANDALONE_EXECUTABLE).execute()
     // Wait for JBoss to start
     def br = new InputStreamReader(standaloneProc.inputStream)
@@ -338,10 +337,7 @@ try {
        }
     } 
     println "Executing config commands..."
-    def cliProc = (BASEDIR +
-      DIR_SEPARATOR +
-      JBOSS_DIRNAME +
-      DIR_SEPARATOR +
+    def cliProc = (jboss_path +
       JBOSS_EXECUTABLE +
       " --file=${tmpFile.getAbsolutePath()}").execute()
     cliProc.in.eachLine { println it }
