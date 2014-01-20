@@ -262,10 +262,10 @@ try {
     println "Uncompressing Eclipse..."
     if (SystemUtils.IS_OS_WINDOWS) {
       uncompress(BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME,
-                 BASEDIR + DIR_SEPARATOR + ECLIPSE_DIRNAME)
+                 BASEDIR)
     } else {
       uncompress(BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME,
-                 BASEDIR)
+        BASEDIR + DIR_SEPARATOR + ECLIPSE_DIRNAME)
     }
   }
   if (CONFIGURE_ECLIPSE) {
