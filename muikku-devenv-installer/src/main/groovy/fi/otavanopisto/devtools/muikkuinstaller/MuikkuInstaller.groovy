@@ -359,11 +359,10 @@ try {
     def cliProc = (jboss_path +
       JBOSS_EXECUTABLE +
       " --file=${tmpFile.getAbsolutePath()}").execute()
-    cliProc.in.eachLine { println it }
-    expect(cliProc, /{\s*"outcome"\s*=>.*?}/)
+    //cliProc.in.eachLine { println it }
+    expect(cliProc, /=>/)
     cliProc.waitForOrKill(100)
-    expect(standaloneProc, /JBoss.*stopped/)
-    standaloneProc.waitForOrKill(100)
+    standaloneProc.waitForOrKill(5000)
   }
   println "Done."
 } catch (SystemNotSupportedException ex) {
