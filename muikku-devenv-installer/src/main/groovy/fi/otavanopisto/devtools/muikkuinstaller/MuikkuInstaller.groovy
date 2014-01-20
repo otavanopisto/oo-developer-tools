@@ -148,10 +148,10 @@ def configure() {
   data-source enable --name=muikku
   data-source add --name=muikku-h2 --driver-name=h2 --driver-class=org.h2.Driver --connection-url=jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE --jndi-name=java:/jdbc/muikku-h2 --use-ccm=false --jta=false --use-java-context=true --min-pool-size=1 --max-pool-size=200 --check-valid-connection-sql="SELECT 1" --validate-on-match=true --background-validation=false --share-prepared-statements=false
   
-  # Execute and reload
+  # Execute and shutdown
   
   run-batch
-  :reload
+  :shutdown
   """
   
   BASEDIR = new File(".").getCanonicalPath();
@@ -342,7 +342,7 @@ try {
       " --file=${tmpFile.getAbsolutePath()}").execute()
     cliProc.in.eachLine { println it }
     cliProc.waitFor()
-    standaloneProc.outputStream.write(3) // Ctrl-C
+    standaloneProc.waitFor()
   }
   println "Done."
 } catch (SystemNotSupportedException ex) {
