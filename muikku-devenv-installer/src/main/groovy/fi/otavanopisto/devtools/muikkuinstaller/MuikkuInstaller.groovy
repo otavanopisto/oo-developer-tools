@@ -351,17 +351,19 @@ try {
       "main" + DIR_SEPARATOR +
       "mysql-connector-java-5.1.18-bin.jar")
     println "Starting JBoss AS..."
-    def standaloneProc = (jboss_path +
-      JBOSS_STANDALONE_EXECUTABLE).execute()
+    ProcessBuilder standalonePb = new ProcessBuilder(jboss_path +
+      JBOSS_STANDALONE_EXECUTABLE)
+    standalonePb.environment().put("NOPAUSE", "true")
+    def standaloneProc = standalonePb.start()
     // Wait for JBoss to start
     expect(standaloneProc, /JBoss.*started/)
     println "Executing config commands..."
-    def cliProc = (jboss_path +
-      JBOSS_EXECUTABLE +
-      " --file=${tmpFile.getAbsolutePath()}").execute()
-    //cliProc.in.eachLine { println it }
+    ProcessBuilder cliPb = new ProcessBuilder(jboss_path +
+      JBOSS_EXECUTABLE, "--file=${tmpFile.getAbsolutePath()}")
+    cliPb.environment().put("NOPAUSE", "true")
+    Process cliProc = cliPb.start()
     expect(cliProc, /=>/)
-    cliProc.waitForOrKill(100)
+    cliProc.waitForOrKill(5000)
     standaloneProc.waitForOrKill(5000)
   }
   println "Done."
