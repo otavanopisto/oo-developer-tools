@@ -1,7 +1,10 @@
 package fi.otavanopisto.devtools.muikkuinstaller
 
+import java.lang.ProcessBuilder.Redirect;
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+
+import javax.crypto.interfaces.PBEKey;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils
@@ -19,6 +22,7 @@ def cliOptions() {
   cli.E('install required plugins for Eclipse')
   cli.j('install JBoss AS')
   cli.J('configure JBoss AS')
+  cli.D('create MySQL/MariaDB database and user')
   cli.a('install and configure all')
   cli.h('print this message', longOpt: 'help')
 
@@ -48,11 +52,13 @@ def cliOptions() {
     CONFIGURE_ECLIPSE = true
     INSTALL_JBOSS = true
     CONFIGURE_JBOSS = true
+    CREATE_DATABASE = true
   } else {
     INSTALL_ECLIPSE = opts.e
     CONFIGURE_ECLIPSE = opts.E
     INSTALL_JBOSS = opts.j
     CONFIGURE_JBOSS = opts.J
+    CREATE_DATABASE = opts.D
   }
   
   if (opts.arguments().size() > 0) {
@@ -130,6 +136,11 @@ def configure() {
   -installIU org.jboss.tools.maven.profiles.feature.feature.group/1.5.4.Final-v20131204-2329-B126
   """.replace('\n', ' ')
   
+  DATABASE_CREATE_SCRIPT = """
+  create database muikku_db default charset utf8;
+  create user muikku_usr@localhost identified by '${-> dbPassword }';
+  grant all on muikku_db.* to muikku_usr@localhost;
+  """
   
   if (SystemUtils.IS_OS_WINDOWS) {
    JBOSS_URL = "http://download.jboss.org/jbossas/7.1/jboss-as-7.1.1.Final/jboss-as-7.1.1.Final.zip"
@@ -229,17 +240,12 @@ def uncompress(fname, dest) throws SystemNotSupportedException {
   }
 }
 
-def runProgram(String progname) {
-  Process process = progname.execute()
-  new Thread(new Runnable() {public void run() {
-    IOUtils.copy(process.getInputStream(), System.out)
-  } } ).start()
-  new Thread(new Runnable() {public void run() {
-    IOUtils.copy(process.getErrorStream(), System.err)
-  } } ).start()
-  new Thread(new Runnable() {public void run() {
-    IOUtils.copy(System.in, process.getOutputStream())
-  } } ).start()
+def runProgram(List<String> argv) {
+  ProcessBuilder pb = new ProcessBuilder(argv)
+  pb.redirectInput(Redirect.INHERIT)
+  pb.redirectOutput(Redirect.INHERIT)
+  pb.redirectError(Redirect.INHERIT)
+  Process process = pb.start()
   process.waitFor()
 }
 
@@ -297,12 +303,44 @@ try {
     def proc = (eclipse_exc_path + ECLIPSE_PLUGIN_INSTALL_ARGS).execute()
     proc.in.eachLine { println it }
   }
+  
+  dbPassword = null
+  if (CREATE_DATABASE) {
+    println "Please enter MySQL administrator username"
+    def adminUsername = readLine()
+    println "Please enter MySQL administrator password"
+    def adminPassword = readLine()
+    while (dbPassword == null) {
+      println "Please enter the password for Muikku database user"
+      def dbPass1 = readLine()
+      println "Enter the password again"
+      def dbPass2 = readLine()
+      if (dbPass1.equals(dbPass2)) { // Password matching in the future
+        dbPassword = dbPass1
+      } else {
+        println "The passwords didn't match"
+      }
+    }
+    ProcessBuilder pb = new ProcessBuilder('mysql',
+                         "-u${adminUsername}",
+                         "-p${adminPassword}")
+    pb.redirectError(Redirect.INHERIT)
+    Process mysqlProc = pb.start()
+    println DATABASE_CREATE_SCRIPT
+    mysqlProc.withWriter {
+      it.write(DATABASE_CREATE_SCRIPT)
+    }
+    mysqlProc.in.eachLine {println it}
+    mysqlProc.waitFor()  
+  }
+  
   if (INSTALL_JBOSS) {
     println "Installing JBoss AS..."
     download(JBOSS_URL, BASEDIR + DIR_SEPARATOR + JBOSS_FILENAME)
     println "Uncompressing JBoss AS..."
     uncompress(BASEDIR + DIR_SEPARATOR + JBOSS_FILENAME, BASEDIR)
   }
+  
   if (CONFIGURE_JBOSS) {
     println "Configuring JBoss AS..."
     def jboss_path = ""
@@ -322,12 +360,18 @@ try {
     repository = readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
     println "Please enter the Deus Nex Machina password"
     dnmPassword = readLine()
-    println "Please enter the database connection URL"
-    connectionUrl = readLine()
-    println "Please enter the database username"
-    username = readLine()
-    println "Please enter the database password"
-    password = readLine()
+    if (CREATE_DATABASE) {
+      println "Please enter the database connection URL"
+      connectionUrl = readLine()
+      println "Please enter the database username"
+      username = readLine()
+      println "Please enter the database password"
+      password = readLine()
+    } else {
+      connectionUrl = "jdbc:mysql://localhost:3306/"
+      username = "muikku-usr"
+      password = dbPassword
+    }
     tmpFile.write(JBOSS_CONFIGURE_SCRIPT.toString().replace(/^\s+/, ""))
     println "Installing MySQL driver..."
     new File(jboss_path +
