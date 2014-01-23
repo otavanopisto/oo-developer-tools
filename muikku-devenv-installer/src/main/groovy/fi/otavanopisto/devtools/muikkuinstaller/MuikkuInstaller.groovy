@@ -22,7 +22,7 @@ def cliOptions() {
   cli.E('install required plugins for Eclipse')
   cli.j('install JBoss AS')
   cli.J('configure JBoss AS')
-  cli.D('create MySQL/MariaDB database and user')
+  cli.D('drop and create MySQL/MariaDB database and user')
   cli.a('install and configure all')
   cli.h('print this message', longOpt: 'help')
 
@@ -137,6 +137,8 @@ def configure() {
   """.replace('\n', ' ')
   
   DATABASE_CREATE_SCRIPT = """
+  drop database if exists muikku_db;
+  drop user if exists muikku_usr@localhost;
   create database muikku_db default charset utf8;
   create user muikku_usr@localhost identified by '${-> dbPassword }';
   grant all on muikku_db.* to muikku_usr@localhost;
@@ -368,8 +370,8 @@ try {
       println "Please enter the database password"
       password = readLine()
     } else {
-      connectionUrl = "jdbc:mysql://localhost:3306/"
-      username = "muikku-usr"
+      connectionUrl = "jdbc:mysql://localhost:3306/muikku_db"
+      username = "muikku_usr"
       password = dbPassword
     }
     tmpFile.write(JBOSS_CONFIGURE_SCRIPT.toString().replace(/^\s+/, ""))
