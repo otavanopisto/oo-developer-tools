@@ -22,7 +22,8 @@ def cliOptions() {
   cli.E('install required plugins for Eclipse')
   cli.j('install JBoss AS')
   cli.J('configure JBoss AS')
-  cli.D('drop and create MySQL/MariaDB database and user')
+  cli.D('drop and create MySQL/MariaDB database and user (requires mysql)')
+  cli.r('clone Muikku git repository (requires git)')
   cli.a('install and configure all')
   cli.h('print this message', longOpt: 'help')
 
@@ -53,12 +54,14 @@ def cliOptions() {
     INSTALL_JBOSS = true
     CONFIGURE_JBOSS = true
     CREATE_DATABASE = true
+    CLONE_REPOSITORY = true
   } else {
     INSTALL_ECLIPSE = opts.e
     CONFIGURE_ECLIPSE = opts.E
     INSTALL_JBOSS = opts.j
     CONFIGURE_JBOSS = opts.J
     CREATE_DATABASE = opts.D
+    CLONE_REPOSITORY = opts.r
   }
   
   if (opts.arguments().size() > 0) {
@@ -138,7 +141,7 @@ def configure() {
   
   DATABASE_CREATE_SCRIPT = """
   drop database if exists muikku_db;
-  drop user if exists muikku_usr@localhost;
+  drop user muikku_usr@localhost;
   create database muikku_db default charset utf8;
   create user muikku_usr@localhost identified by '${-> dbPassword }';
   grant all on muikku_db.* to muikku_usr@localhost;
@@ -242,11 +245,15 @@ def uncompress(fname, dest) throws SystemNotSupportedException {
   }
 }
 
-def runProgram(List<String> argv) {
+def runProgram(List<String> argv, File dir=null) {
+  if (dir == null) {
+    dir = new File(BASEDIR)
+  }
   ProcessBuilder pb = new ProcessBuilder(argv)
   pb.redirectInput(Redirect.INHERIT)
   pb.redirectOutput(Redirect.INHERIT)
   pb.redirectError(Redirect.INHERIT)
+  pb.directory(dir)
   Process process = pb.start()
   process.waitFor()
 }
@@ -336,6 +343,13 @@ try {
     mysqlProc.waitFor()  
   }
   
+  if (CLONE_REPOSITORY) {
+    File dir = new File(BASEDIR)
+    runProgram(['git', 'clone', 'git@github.com:otavanopisto/muikku.git'], dir)
+    dir = new File(BASEDIR + DIR_SEPARATOR + "muikku")
+    runProgram(['git', 'checkout', '--track', 'origin/devel'], dir)
+  }
+  
   if (INSTALL_JBOSS) {
     println "Installing JBoss AS..."
     download(JBOSS_URL, BASEDIR + DIR_SEPARATOR + JBOSS_FILENAME)
@@ -358,21 +372,25 @@ try {
     }
     File tmpFile = File.createTempFile("temp", "cli");
     tmpFile.deleteOnExit()
-    println "Please enter the absolute path to the root of Muikku Git repository"
-    repository = readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
+    if (CLONE_REPOSITORY) {
+      repository = BASEDIR + DIR_SEPARATOR + "muikku"
+    } else {
+      println "Please enter the absolute path to the root of Muikku Git repository"
+      repository = readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
+    }
     println "Please enter the Deus Nex Machina password"
     dnmPassword = readLine()
     if (CREATE_DATABASE) {
+      connectionUrl = "jdbc:mysql://localhost:3306/muikku_db"
+      username = "muikku_usr"
+      password = dbPassword
+    } else {
       println "Please enter the database connection URL"
       connectionUrl = readLine()
       println "Please enter the database username"
       username = readLine()
       println "Please enter the database password"
       password = readLine()
-    } else {
-      connectionUrl = "jdbc:mysql://localhost:3306/muikku_db"
-      username = "muikku_usr"
-      password = dbPassword
     }
     tmpFile.write(JBOSS_CONFIGURE_SCRIPT.toString().replace(/^\s+/, ""))
     println "Installing MySQL driver..."
