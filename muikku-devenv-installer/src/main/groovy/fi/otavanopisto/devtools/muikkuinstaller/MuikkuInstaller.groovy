@@ -258,7 +258,22 @@ def runProgram(List<String> argv, File dir=null) {
   pb.directory(dir)
   Process process = pb.start()
   if (SystemUtils.IS_OS_WINDOWS) {
-    process.in.eachLine { println it }
+    def ir = new InputStreamReader(process.inputStream)
+    def er = new InputStreamReader(process.errorStream)
+    Thread.start {
+      def line
+      while ((line = ir.readLine()) != null) {
+        println line
+      }
+      ir.closeQuietly()
+    }
+    Thread.start {
+      def line
+      while ((line = er.readLine()) != null) {
+        println line
+      }
+      er.closeQuietly()
+    }
   }
   process.waitFor()
 }
