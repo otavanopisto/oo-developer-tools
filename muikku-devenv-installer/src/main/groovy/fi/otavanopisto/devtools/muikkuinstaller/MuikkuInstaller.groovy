@@ -141,7 +141,6 @@ def configure() {
   
   DATABASE_CREATE_SCRIPT = """
   drop database if exists muikku_db;
-  drop user muikku_usr@localhost;
   create database muikku_db default charset utf8;
   create user muikku_usr@localhost identified by '${-> dbPassword }';
   grant all on muikku_db.* to muikku_usr@localhost;
@@ -293,6 +292,10 @@ try {
       println "Aborting..."
       return
     }
+  }
+  
+  if (CLONE_REPOSITORY) {
+    
   }
 
   if (INSTALL_ECLIPSE) {
