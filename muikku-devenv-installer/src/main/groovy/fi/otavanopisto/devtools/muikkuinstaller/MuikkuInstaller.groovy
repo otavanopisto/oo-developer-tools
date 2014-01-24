@@ -66,7 +66,7 @@ def cliOptions() {
   
   if (opts.arguments().size() > 0) {
     BASEDIR = opts.arguments().get(0).replaceAll(DIR_SEPARATOR + /+$/, "")
-    BASEDIR = new File(BASEDIR).getCanonicalPath()
+    BASEDIR = new File(BASEDIR).getAbsolutePath()
   } else {
     cli.usage()
     return false
@@ -195,7 +195,7 @@ def configure() {
 }
 
 // UTILITY FUNCTIONS
-def readLine() {
+String readLine() {
   def s = new Scanner(System.in);
   return s.nextLine();
 }
@@ -282,6 +282,18 @@ def expect(Process proc, String regex) {
 try {
   if (!configure()) {return}
   if (!cliOptions()) {return}
+  
+  File basedirFile = new File(BASEDIR)
+  if (!basedirFile.exists()) {
+    basedirFile.mkdirs()
+  } else {
+    println "The given directory exists. Continue? (y/n)"
+    def c = readLine().charAt(0)
+    if (c != 'y' && c != 'Y') {
+      println "Aborting..."
+      return
+    }
+  }
 
   if (INSTALL_ECLIPSE) {
     println "Downloading Eclipse..."
@@ -378,7 +390,7 @@ try {
       println "Please enter the absolute path to the root of Muikku Git repository"
       repository = readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
     }
-    println "Please enter the Deus Nex Machina password"
+    println "Please enter the Deus Nex Machina password (optional)"
     dnmPassword = readLine()
     if (CREATE_DATABASE) {
       connectionUrl = "jdbc:mysql://localhost:3306/muikku_db"
