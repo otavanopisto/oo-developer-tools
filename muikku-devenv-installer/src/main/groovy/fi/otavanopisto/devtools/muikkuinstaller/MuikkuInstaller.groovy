@@ -343,7 +343,7 @@ try {
   
   if (CLONE_REPOSITORY) {
     File dir = new File(BASEDIR)
-    runProgram(['git', 'clone', 'git@github.com:otavanopisto/muikku.git'], dir)
+    runProgram(['git', 'clone', 'https://github.com/otavanopisto/muikku.git'], dir)
     dir = new File(BASEDIR + DIR_SEPARATOR + "muikku")
     runProgram(['git', 'checkout', '--track', 'origin/devel'], dir)
   }
