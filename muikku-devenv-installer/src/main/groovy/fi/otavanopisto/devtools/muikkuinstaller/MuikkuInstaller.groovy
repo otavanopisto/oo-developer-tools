@@ -265,14 +265,14 @@ def runProgram(List<String> argv, File dir=null) {
       while ((line = ir.readLine()) != null) {
         println line
       }
-      ir.closeQuietly()
+      ir.close()
     }
     Thread.start {
       def line
       while ((line = er.readLine()) != null) {
         println line
       }
-      er.closeQuietly()
+      er.close()
     }
   }
   process.waitFor()
