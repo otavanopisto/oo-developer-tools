@@ -248,11 +248,31 @@ def runProgram(List<String> argv, File dir=null) {
     dir = new File(BASEDIR)
   }
   ProcessBuilder pb = new ProcessBuilder(argv)
-  pb.redirectInput(Redirect.INHERIT)
-  pb.redirectOutput(Redirect.INHERIT)
-  pb.redirectError(Redirect.INHERIT)
+  if (!SystemUtils.IS_OS_WINDOWS) { // Inherit not supported on Windows
+    pb.redirectInput(Redirect.INHERIT)
+    pb.redirectOutput(Redirect.INHERIT)
+    pb.redirectError(Redirect.INHERIT)
+  }
   pb.directory(dir)
   Process process = pb.start()
+  if (SystemUtils.IS_OS_WINDOWS) {
+    def ir = new InputStreamReader(process.inputStream)
+    def er = new InputStreamReader(process.errorStream)
+    Thread.start {
+      def line
+      while ((line = ir.readLine()) != null) {
+        println line
+      }
+      ir.close()
+    }
+    Thread.start {
+      def line
+      while ((line = er.readLine()) != null) {
+        println line
+      }
+      er.close()
+    }
+  }
   process.waitFor()
 }
 
