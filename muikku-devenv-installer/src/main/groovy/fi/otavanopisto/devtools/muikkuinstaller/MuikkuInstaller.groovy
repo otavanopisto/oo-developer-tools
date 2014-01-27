@@ -235,7 +235,6 @@ def unzip(fname, dest) {
 
 def uncompress(fname, dest) throws SystemNotSupportedException {
   if (fname =~ /.*\.tar\.gz/) {
-    new File(BASEDIR, ECLIPSE_DIRNAME).mkdirs();
     ["tar", "-xzf", fname, "-C", dest].execute().waitFor()
   } else if (fname =~ /.*\.zip/) {
     unzip(fname, dest)
@@ -302,13 +301,9 @@ try {
     println "Downloading Eclipse..."
     download(ECLIPSE_URL, BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME)
     println "Uncompressing Eclipse..."
-    if (SystemUtils.IS_OS_WINDOWS) {
-      uncompress(BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME,
-                 BASEDIR)
-    } else {
-      uncompress(BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME,
-        BASEDIR + DIR_SEPARATOR + ECLIPSE_DIRNAME)
-    }
+    uncompress(BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME,
+               BASEDIR)
+
   }
   if (CONFIGURE_ECLIPSE) {
     println "Installing Eclipse plugins..."
