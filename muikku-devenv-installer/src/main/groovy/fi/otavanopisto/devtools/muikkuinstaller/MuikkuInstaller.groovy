@@ -235,7 +235,8 @@ def unzip(fname, dest) {
 
 def uncompress(fname, dest) throws SystemNotSupportedException {
   if (fname =~ /.*\.tar\.gz/) {
-    ["tar", "-xzf", fname, dest].execute().waitFor()
+    new File(BASEDIR, ECLIPSE_DIRNAME).mkdirs();
+    ["tar", "-xzf", fname, "-C", dest].execute().waitFor()
   } else if (fname =~ /.*\.zip/) {
     unzip(fname, dest)
   } else {
