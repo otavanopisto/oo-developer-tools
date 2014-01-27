@@ -235,7 +235,7 @@ def unzip(fname, dest) {
 
 def uncompress(fname, dest) throws SystemNotSupportedException {
   if (fname =~ /.*\.tar\.gz/) {
-    ["tar", "-xzf", fname].execute().waitFor()
+    ["tar", "-xzf", fname, dest].execute().waitFor()
   } else if (fname =~ /.*\.zip/) {
     unzip(fname, dest)
   } else {
