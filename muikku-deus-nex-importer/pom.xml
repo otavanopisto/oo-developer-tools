@@ -71,7 +71,7 @@
                         <configuration>
                             <tasks>
                                 <copy file="${basedir}/target/${project.artifactId}-jar-with-dependencies.jar"
-                                      tofile="${basedir}/../dist/muikku-deus-nex-importer.jar" />
+                                      tofile="${basedir}/../dist/deus-nex-importer.jar" />
                             </tasks>
                         </configuration>
                         <goals>
