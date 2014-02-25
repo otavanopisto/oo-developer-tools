@@ -52,7 +52,7 @@ import org.xml.sax.SAXException;
 
 public class Downloader {
   
-  public static void main(String[] args) {
+  public static void invoke(String[] args) {
     CommandLineParser parser = new GnuParser();
     Options options = new Options();
     
