@@ -383,7 +383,6 @@ public class Downloader {
     return null;
   }
   
-  @SuppressWarnings("unused")
   private static NodeList findNodesByXPath(Node contextNode, String expression) throws XPathExpressionException {
     return (NodeList) XPathFactory.newInstance().newXPath().evaluate(expression, contextNode, XPathConstants.NODESET);
   }
