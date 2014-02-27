@@ -40,6 +40,7 @@ String UPDATES_FOLDER = "updates";
 
 // TODO: Check svn
 // TODO: Check mvn
+// TODO: Check mysql
 // TODO: Clean garbage
 
 // CONFIGURATION
@@ -551,7 +552,7 @@ try {
 
     ProcessBuilder pb = new ProcessBuilder('mvn', 
       "org.apache.maven.plugins:maven-dependency-plugin:2.8:get",
-      "-DremoteRepositories=http://maven.otavanopisto.fi:7070/nexus/content/repositories/releases",
+      "-DremoteRepositories=http://maven.otavanopisto.fi:7070/nexus/content/repositories/releases,http://maven.otavanopisto.fi:7070/nexus/content/repositories/snapshots",
       "-Dartifact=fi.pyramus:pyramus:${-> pyramusVersion}:war",
       "-Ddest=" + jboss_path + '/standalone/deployments/ROOT.war'
     );
