@@ -55,11 +55,12 @@ def cliOptions() {
   cli.a('install and configure all')
   cli.f('attempt to operate without promping the user', longOpt: 'force')
   cli.h('print this message', longOpt: 'help')
+  cli._(longOpt:'version', args:1, argName:'version', 'Pyramus version to be installed, defaults to latest stable')
+  cli._(longOpt:'jbossDir', args:1, argName:'directory', 'JBoss install directory')
+  cli._(longOpt:'hostname', args:1, argName:'e.g. www.example.com', 'Pyramus hostname')
   cli._(longOpt:'databaseUrl', args:1, argName:'url', 'Database connection URL')
   cli._(longOpt:'databaseUser', args:1, argName:'user', 'Database username')
   cli._(longOpt:'databasePassword', args:1, argName:'password', 'Database password')
-  cli._(longOpt:'jbossDir', args:1, argName:'directory', 'JBoss install directory')
-  cli._(longOpt:'hostname', args:1, argName:'e.g. www.example.com', 'Pyramus hostname')
   cli._(longOpt:'databaseAdminUser', args:1, argName:'user', 'Database admin username')
   cli._(longOpt:'databaseAdminPassword', args:1, argName:'password', 'Database admin password')
   
@@ -108,6 +109,7 @@ def cliOptions() {
   PYRAMUS_HOSTNAME = opts.getProperty('hostname')
   DATABASE_ADMIN_USER = opts.getProperty('databaseAdminUser')
   DATABASE_ADMIN_PASSWORD = opts.getProperty('databaseAdminPassword')
+  VERSION = opts.getProperty('version')
   
   if (opts.arguments().size() > 0) {
     BASEDIR = opts.arguments().get(0).replaceAll(DIR_SEPARATOR + /+$/, "")
@@ -541,8 +543,12 @@ try {
   if (INSTALL_PYRAMUS) {
     println "Installing Pyramus..."
     
-    pyramusVersion = "LATEST"
-    
+    if (VERSION) {
+      pyramusVersion = VERSION
+    } else {
+      pyramusVersion = "LATEST"
+    }
+
     ProcessBuilder pb = new ProcessBuilder('mvn', 
       "org.apache.maven.plugins:maven-dependency-plugin:2.8:get",
       "-DremoteRepositories=http://maven.otavanopisto.fi:7070/nexus/content/repositories/releases",
@@ -557,6 +563,8 @@ try {
     println "Starting JBoss AS..."
     ProcessBuilder standalonePb = new ProcessBuilder(jboss_path +
       JBOSS_STANDALONE_EXECUTABLE)
+    standalonePb.directory(new File(jboss_path + DIR_SEPARATOR + "bin"));
+    
     standalonePb.environment().put("NOPAUSE", "true")
     def standaloneProc = standalonePb.start()
     try {
