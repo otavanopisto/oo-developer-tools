@@ -20,6 +20,7 @@ UPDATES_FOLDER = "updates";
 
 // TODO: Check svn
 // TODO: Check mvn
+// TODO: Clean garbage
 
 // CONFIGURATION
 def cliOptions() {
@@ -38,6 +39,7 @@ def cliOptions() {
   cli._(longOpt:'databaseUser', args:1, argName:'user', 'Database username')
   cli._(longOpt:'databasePassword', args:1, argName:'password', 'Database password')
   cli._(longOpt:'jbossDir', args:1, argName:'directory', 'JBoss install directory')
+  cli._(longOpt:'hostname', args:1, argName:'e.g. www.example.com', 'Pyramus hostname')
   
   def commandLine = []
 
@@ -81,6 +83,7 @@ def cliOptions() {
   DATABASE_USER = opts.getProperty('databaseUser')
   DATABASE_PASSWORD = opts.getProperty('databasePassword')
   JBOSS_DIR = opts.getProperty('jbossDir')
+  HOSTNAME = opts.getProperty('hostname')
    
   if (opts.arguments().size() > 0) {
     BASEDIR = opts.arguments().get(0).replaceAll(DIR_SEPARATOR + /+$/, "")
@@ -384,11 +387,19 @@ try {
     }
   }
   
+  if (SELF_SIGNED_CERT || INSTALL_PYRAMUS) {
+    if (HOSTNAME == null) {
+      println "Please enter Pyramus hostname"
+      hostname = (readLine().replaceAll(DIR_SEPARATOR + /+$/, "") + DIR_SEPARATOR)
+    } else {
+      hostname = HOSTNAME
+    }
+  }
+  
   if (SELF_SIGNED_CERT) {
     println "Generating self-signed sertificate..."
     keystoreFile = jboss_path + '/standalone/configuration/pyramus.keystore';
     new File(keystoreFile).delete();
-    hostname = "dev.pyramus.fi";
     keyAlias = "pyramus";
     keyPassword = "pyramus";
 
@@ -485,19 +496,24 @@ try {
   }
   
   if (INSTALL_PYRAMUS) {
+    pyramusVersion = "LATEST"
+    
     ProcessBuilder pb = new ProcessBuilder('mvn', 
       "org.apache.maven.plugins:maven-dependency-plugin:2.8:get",
       "-DremoteRepositories=http://maven.otavanopisto.fi:7070/nexus/content/repositories/releases",
-      "-Dartifact=fi.pyramus:pyramus:LATEST:war",
+      "-Dartifact=fi.pyramus:pyramus:${-> pyramusVersion}:war",
       "-Ddest=" + jboss_path + '/standalone/deployments/ROOT.war'
     );
     pb.redirectError(Redirect.INHERIT)
     Process mvnProc = pb.start()
     mvnProc.in.eachLine {println it}
     mvnProc.waitFor()
+    
+    
   }
 
   println "Done."
+  
 } catch (SystemNotSupportedException ex) {
   println "Your system is not supported."
 }
