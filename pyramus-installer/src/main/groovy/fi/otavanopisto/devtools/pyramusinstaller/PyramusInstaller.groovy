@@ -133,6 +133,10 @@ def configure() {
   
   connect
   batch
+
+  # System properties
+  
+  /system-property=PyramusWSAllowedIPs:add(value="127.0.0.1")
   
   # MySQL JDBC Driver 
 
@@ -147,8 +151,13 @@ def configure() {
 
   /subsystem=web/virtual-server=default-host:write-attribute(name=enable-welcome-root,value=false)
   /subsystem=web/connector=http:write-attribute(name=redirect-port,value="8443")
-  /subsystem=web/connector=https:add(socket-binding=https,scheme=https,protocol="HTTP/1.1",enabled=true)
-  /subsystem=web/connector=https/ssl=configuration:add(name="ssl",certificate-key-file="${-> keystoreFile}",password="${-> keyPassword}", key-alias="${-> keyAlias}", protocol="TLS", verify-client="false")
+  /subsystem=web/connector=https:add(socket-binding=https,scheme=https,protocol="HTTP/1.1",enabled=true,secure=true)
+  /subsystem=web/connector=https/ssl=configuration:add(name="ssl",certificate-key-file="\${jboss.server.config.dir}/pyramus.keystore",password="${-> keyPassword}", key-alias="${-> keyAlias}", protocol="TLS", verify-client="false")
+
+  # WebServices
+
+  /subsystem=security/security-domain=WebServices:add(cache-type=default)
+  /subsystem=security/security-domain=WebServices/authentication=classic:add(login-modules=[{"code"=>"RealmUsersRoles","flag"=>"required","module-options"=>[("realm"=>"WebServices"),("password-stacking"=>"useFirstPass"),("rolesProperties"=>"\${jboss.server.config.dir}/application-roles.properties"),("usersProperties"=>"\${jboss.server.config.dir}/application-users.properties")]}])
 
   # Execute and shutdown
   
@@ -377,7 +386,7 @@ try {
   
   if (SELF_SIGNED_CERT) {
     println "Generating self-signed sertificate..."
-    keystoreFile = jboss_path + '/standalone/configuration/jboss.keystore';
+    keystoreFile = jboss_path + '/standalone/configuration/pyramus.keystore';
     new File(keystoreFile).delete();
     hostname = "dev.pyramus.fi";
     keyAlias = "pyramus";
@@ -433,7 +442,7 @@ try {
   if (CONFIGURE_JBOSS) {
     println "Configuring JBoss AS..."
     File tmpFile = File.createTempFile("temp", "cli");
-    // tmpFile.deleteOnExit()
+    tmpFile.deleteOnExit()
     
     tmpFile.write(JBOSS_CONFIGURE_SCRIPT.toString().replace(/^\s+/, ""))
     println "Installing MySQL driver..."
