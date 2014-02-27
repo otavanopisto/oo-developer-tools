@@ -5,18 +5,38 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
 import javax.crypto.interfaces.PBEKey;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+def nullTrustManager = [
+  checkClientTrusted: { chain, authType ->  },
+  checkServerTrusted: { chain, authType ->  },
+  getAcceptedIssuers: { null }
+]
+
+def nullHostnameVerifier = [
+  verify: { hostname, session -> true }
+]
+
+SSLContext sc = SSLContext.getInstance("SSL")
+sc.init(null, [nullTrustManager as X509TrustManager] as TrustManager[], null)
+HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory())
+HttpsURLConnection.setDefaultHostnameVerifier(nullHostnameVerifier as HostnameVerifier)
+
 class SystemNotSupportedException extends Exception {
 };
 
-// TODO: Conf?
-UPDATES_URL = "https://github.com/otavanopisto/pyramus/trunk/pyramus/updates";
-UPDATES_FOLDER = "updates";
+// TODO: Conf updates?
+String UPDATES_URL = "https://github.com/otavanopisto/pyramus/trunk/pyramus/updates";
+String UPDATES_FOLDER = "updates";
 
 // TODO: Check svn
 // TODO: Check mvn
@@ -40,6 +60,8 @@ def cliOptions() {
   cli._(longOpt:'databasePassword', args:1, argName:'password', 'Database password')
   cli._(longOpt:'jbossDir', args:1, argName:'directory', 'JBoss install directory')
   cli._(longOpt:'hostname', args:1, argName:'e.g. www.example.com', 'Pyramus hostname')
+  cli._(longOpt:'databaseAdminUser', args:1, argName:'user', 'Database admin username')
+  cli._(longOpt:'databaseAdminPassword', args:1, argName:'password', 'Database admin password')
   
   def commandLine = []
 
@@ -83,8 +105,10 @@ def cliOptions() {
   DATABASE_USER = opts.getProperty('databaseUser')
   DATABASE_PASSWORD = opts.getProperty('databasePassword')
   JBOSS_DIR = opts.getProperty('jbossDir')
-  HOSTNAME = opts.getProperty('hostname')
-   
+  PYRAMUS_HOSTNAME = opts.getProperty('hostname')
+  DATABASE_ADMIN_USER = opts.getProperty('databaseAdminUser')
+  DATABASE_ADMIN_PASSWORD = opts.getProperty('databaseAdminPassword')
+  
   if (opts.arguments().size() > 0) {
     BASEDIR = opts.arguments().get(0).replaceAll(DIR_SEPARATOR + /+$/, "")
     BASEDIR = new File(BASEDIR).getAbsolutePath()
@@ -260,6 +284,8 @@ def expect(Process proc, String regex) {
 
 
 try {
+  String hostname = null
+  
   Logger.getRootLogger().setLevel(Level.DEBUG);
   
   if (!configure()) {return}
@@ -282,10 +308,24 @@ try {
 
   dbPassword = null
   if (CREATE_DATABASE) {
-    println "Please enter MySQL administrator username"
-    def adminUsername = readLine()
-    println "Please enter MySQL administrator password"
-    def adminPassword = readLine()
+    
+    adminUsername = null
+    adminPassword = null
+    
+    if (!DATABASE_ADMIN_USER) {
+      println "Please enter MySQL administrator username"
+      adminUsername = readLine()
+    } else {
+      adminUsername = DATABASE_ADMIN_USER
+    }
+    
+    if (!DATABASE_ADMIN_PASSWORD) {
+      println "Please enter MySQL administrator password"
+      adminPassword = readLine()
+    } else {
+      adminPassword = DATABASE_ADMIN_PASSWORD
+    }
+    
     while (dbPassword == null) {
       println "Please enter the password for Pyramus database user"
       def dbPass1 = readLine()
@@ -338,6 +378,15 @@ try {
       }
     }
   }
+  
+  if (SELF_SIGNED_CERT || INSTALL_PYRAMUS) {
+    if (!PYRAMUS_HOSTNAME) {
+      println "Please enter Pyramus hostname"
+      hostname = readLine()
+    } else {
+      hostname = PYRAMUS_HOSTNAME
+    }
+  }
 
   if (UPDATE_DATABASE) {
     ProcessBuilder pb = new ProcessBuilder('svn',
@@ -384,15 +433,6 @@ try {
       } else {
         jboss_path = JBOSS_DIR
       }
-    }
-  }
-  
-  if (SELF_SIGNED_CERT || INSTALL_PYRAMUS) {
-    if (HOSTNAME == null) {
-      println "Please enter Pyramus hostname"
-      hostname = (readLine().replaceAll(DIR_SEPARATOR + /+$/, "") + DIR_SEPARATOR)
-    } else {
-      hostname = HOSTNAME
     }
   }
   
@@ -483,19 +523,24 @@ try {
       JBOSS_STANDALONE_EXECUTABLE)
     standalonePb.environment().put("NOPAUSE", "true")
     def standaloneProc = standalonePb.start()
-    // Wait for JBoss to start
-    expect(standaloneProc, /JBoss.*started/)
-    println "Executing config commands..."
-    ProcessBuilder cliPb = new ProcessBuilder(jboss_path +
-      JBOSS_EXECUTABLE, "--file=${tmpFile.getAbsolutePath()}")
-    cliPb.environment().put("NOPAUSE", "true")
-    Process cliProc = cliPb.start()
-    expect(cliProc, /=>/)
-    cliProc.waitForOrKill(5000)
-    standaloneProc.waitForOrKill(5000)
+    try {
+      // Wait for JBoss to start
+      expect(standaloneProc, /JBoss.*started/)
+      println "Executing config commands..."
+      ProcessBuilder cliPb = new ProcessBuilder(jboss_path +
+        JBOSS_EXECUTABLE, "--file=${tmpFile.getAbsolutePath()}")
+      cliPb.environment().put("NOPAUSE", "true")
+      Process cliProc = cliPb.start()
+      expect(cliProc, /=>/)
+      cliProc.waitForOrKill(5000)
+    } finally {
+      standaloneProc.waitForOrKill(5000)
+    }
   }
   
   if (INSTALL_PYRAMUS) {
+    println "Installing Pyramus..."
+    
     pyramusVersion = "LATEST"
     
     ProcessBuilder pb = new ProcessBuilder('mvn', 
@@ -509,7 +554,29 @@ try {
     mvnProc.in.eachLine {println it}
     mvnProc.waitFor()
     
-    
+    println "Starting JBoss AS..."
+    ProcessBuilder standalonePb = new ProcessBuilder(jboss_path +
+      JBOSS_STANDALONE_EXECUTABLE)
+    standalonePb.environment().put("NOPAUSE", "true")
+    def standaloneProc = standalonePb.start()
+    try {
+      // Wait for JBoss to start
+      expect(standaloneProc, /JBoss.*started/)
+      println "Importing initial data..."
+
+      URL url = new URL("https", hostname, 8443, "/system/initialdata.page");
+      HttpURLConnection connection = url.openConnection();
+      println connection.getContent()
+      
+      if (connection.getResponseCode() != 200) {
+        println "Initial data imported."
+      } else {
+        println "Initial data import failed..."
+        return
+      }
+    } finally {
+      standaloneProc.waitForOrKill(5000)
+    }
   }
 
   println "Done."
