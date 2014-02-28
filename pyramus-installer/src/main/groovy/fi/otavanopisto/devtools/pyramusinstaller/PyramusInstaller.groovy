@@ -191,6 +191,14 @@ def configure() {
   /subsystem=security/security-domain=WebServices:add(cache-type=default)
   /subsystem=security/security-domain=WebServices/authentication=classic:add(login-modules=[{"code"=>"RealmUsersRoles","flag"=>"required","module-options"=>[("realm"=>"WebServices"),("password-stacking"=>"useFirstPass"),("rolesProperties"=>"\${jboss.server.config.dir}/application-roles.properties"),("usersProperties"=>"\${jboss.server.config.dir}/application-users.properties")]}])
 
+  # Interfaces
+
+  /interface=public:remove
+  /interface=public:add(any-address=true)
+
+  /interface=unsecure:remove
+  /interface=unsecure:add(any-address=true)
+
   # Execute and shutdown
   
   run-batch
@@ -564,7 +572,7 @@ try {
     mvnProc.waitFor()
     
     println "### Installation complete ###"
-    println "Next you need to start you JBoss server by executing ${-> jboss_path + JBOSS_EXECUTABLE} and navigate"
+    println "Next you need to start you JBoss server by executing ${-> jboss_path + JBOSS_STANDALONE_EXECUTABLE} and navigate"
     println "Into https://${-> hostname}:8443/system/initialdata.page with your webbrowser and follow the instructions on the screen"
     println "Username and password are admin / query by default (change these after installation)"
   }
