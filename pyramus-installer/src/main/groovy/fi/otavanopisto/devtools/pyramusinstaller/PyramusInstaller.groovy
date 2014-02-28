@@ -42,6 +42,8 @@ String UPDATES_FOLDER = "updates";
 // TODO: Check mvn
 // TODO: Check mysql
 // TODO: Clean garbage
+// TODO: Change installer to log into a file 
+// TODO: Add progress indicator
 
 // CONFIGURATION
 def cliOptions() {
