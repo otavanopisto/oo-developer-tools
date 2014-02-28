@@ -561,31 +561,9 @@ try {
     mvnProc.in.eachLine {println it}
     mvnProc.waitFor()
     
-    println "Starting JBoss AS..."
-    ProcessBuilder standalonePb = new ProcessBuilder(jboss_path +
-      JBOSS_STANDALONE_EXECUTABLE)
-    standalonePb.directory(new File(jboss_path + DIR_SEPARATOR + "bin"));
-    
-    standalonePb.environment().put("NOPAUSE", "true")
-    def standaloneProc = standalonePb.start()
-    try {
-      // Wait for JBoss to start
-      expect(standaloneProc, /JBoss.*started/)
-      println "Importing initial data..."
-
-      URL url = new URL("https", hostname, 8443, "/system/initialdata.page");
-      HttpURLConnection connection = url.openConnection();
-      println connection.getContent()
-      
-      if (connection.getResponseCode() != 200) {
-        println "Initial data imported."
-      } else {
-        println "Initial data import failed..."
-        return
-      }
-    } finally {
-      standaloneProc.waitForOrKill(5000)
-    }
+    println "### Installation complete ###"
+    println "Please navigate next into https://{-> hostname}:8443/system/initialdata.page with your webbrowser and follow the instructions on the screen"
+    println "Username and password are admin / query by default (change these after installation)"
   }
 
   println "Done."
