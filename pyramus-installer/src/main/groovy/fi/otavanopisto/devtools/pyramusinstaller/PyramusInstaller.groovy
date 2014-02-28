@@ -562,7 +562,8 @@ try {
     mvnProc.waitFor()
     
     println "### Installation complete ###"
-    println "Please navigate next into https://{-> hostname}:8443/system/initialdata.page with your webbrowser and follow the instructions on the screen"
+    println "Next you need to start you JBoss server by executing ${-> jboss_path + JBOSS_EXECUTABLE} and navigate"
+    println "Into https://${-> hostname}:8443/system/initialdata.page with your webbrowser and follow the instructions on the screen"
     println "Username and password are admin / query by default (change these after installation)"
   }
 
