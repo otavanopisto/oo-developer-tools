@@ -141,7 +141,7 @@ def configure() {
   grant usage on *.* to pyramus_usr@localhost;
   drop user pyramus_usr@localhost;
   create database pyramus_db default charset utf8;
-  create user pyramus_usr@localhost identified by '${-> dbPassword }';
+  create user pyramus_usr@localhost identified by '${-> password }';
   grant all on pyramus_db.* to pyramus_usr@localhost;
   """
   
@@ -319,7 +319,29 @@ try {
     }
   }
 
-  dbPassword = null
+  if (CREATE_DATABASE || UPDATE_DATABASE || CONFIGURE_JBOSS) {
+    if (DATABASE_URL == null) {
+      println "Please enter the database connection URL"
+      connectionUrl = readLine()
+    } else {
+      connectionUrl = DATABASE_URL
+    }
+      
+    if (DATABASE_USER == null) {
+      println "Please enter the database username"
+      username = readLine()
+    } else {
+      username = DATABASE_USER
+    }
+      
+    if (DATABASE_PASSWORD == null) {
+      println "Please enter the database password"
+      password = readLine()
+    } else {
+      password = DATABASE_PASSWORD
+    }
+  }
+
   if (CREATE_DATABASE) {
     
     adminUsername = null
@@ -338,18 +360,7 @@ try {
     } else {
       adminPassword = DATABASE_ADMIN_PASSWORD
     }
-    
-    while (dbPassword == null) {
-      println "Please enter the password for Pyramus database user"
-      def dbPass1 = readLine()
-      println "Enter the password again"
-      def dbPass2 = readLine()
-      if (dbPass1.equals(dbPass2)) { // Password matching in the future
-        dbPassword = dbPass1
-      } else {
-        println "The passwords didn't match"
-      }
-    }
+
     ProcessBuilder pb = new ProcessBuilder('mysql',
                          "-u${adminUsername}",
                          "-p${adminPassword}")
@@ -361,35 +372,6 @@ try {
     }
     mysqlProc.in.eachLine {println it}
     mysqlProc.waitFor()  
-  }
-  
-  if (UPDATE_DATABASE || CONFIGURE_JBOSS) {
-    if (CREATE_DATABASE) {
-      connectionUrl = "jdbc:mysql://localhost:3306/pyramus_db"
-      username = "pyramus_usr"
-      password = dbPassword
-    } else {
-      if (DATABASE_URL == null) {
-        println "Please enter the database connection URL"
-        connectionUrl = readLine()
-      } else {
-        connectionUrl = DATABASE_URL
-      }
-      
-      if (DATABASE_USER == null) {
-        println "Please enter the database username"
-        username = readLine()
-      } else {
-        username = DATABASE_USER
-      }
-      
-      if (DATABASE_PASSWORD == null) {
-        println "Please enter the database password"
-        password = readLine()
-      } else {
-        password = DATABASE_PASSWORD
-      }
-    }
   }
   
   if (SELF_SIGNED_CERT || INSTALL_PYRAMUS) {
