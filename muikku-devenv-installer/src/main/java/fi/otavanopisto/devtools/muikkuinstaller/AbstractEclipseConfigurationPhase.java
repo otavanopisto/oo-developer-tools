@@ -23,7 +23,7 @@ public abstract class AbstractEclipseConfigurationPhase extends InstallerPhase {
   }
 
   protected File getEclipsePluginsFolder(File eclipseFolder) {  
-    return new File(eclipseFolder, "plugins");
+    return new File(eclipseFolder, "dropins");
   }
   
   protected File getEclipseWorkspaceFolder(InstallerContext context, boolean createMissing) {

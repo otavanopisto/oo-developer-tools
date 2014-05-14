@@ -11,6 +11,7 @@ public class Main {
         new ConfigureEclipsePhase(),
         new CloneGitRepositoryPhase(),
         new ImportEclipseProjectsPhase()
+        //new UpdateEclipseProjectsPhase()
       );
     } catch (Exception e) {
       e.printStackTrace();

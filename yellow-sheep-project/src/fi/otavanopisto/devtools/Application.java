@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.codehaus.plexus.util.StringUtils;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.jobs.Job;
@@ -20,6 +23,7 @@ import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.m2e.core.MavenPlugin;
 import org.eclipse.m2e.core.project.MavenProjectInfo;
+import org.eclipse.m2e.core.project.MavenUpdateRequest;
 import org.eclipse.m2e.core.project.ProjectImportConfiguration;
 import org.jboss.tools.maven.apt.MavenJdtAptPlugin;
 import org.jboss.tools.maven.apt.preferences.AnnotationProcessingMode;
@@ -66,6 +70,9 @@ public class Application implements IApplication {
           System.out.println("Projects imported");
         }
       break;
+      case "update-projects":
+        updateMavenProjects();
+      break;
     }
 
     System.out.println("Waiting for background processes to end...");
@@ -98,6 +105,12 @@ public class Application implements IApplication {
     return options;
   }
 
+  private void updateMavenProjects() throws CoreException{
+    IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+    MavenUpdateRequest req = new MavenUpdateRequest(projects, false, false);
+    MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(req, new ConsoleProgressMonitor());
+  }
+  
   private void importPomFiles(String projectNameTemplate, List<File> pomFiles) throws Exception {
     ProjectImportConfiguration configuration = new ProjectImportConfiguration();
     configuration.setProjectNameTemplate(projectNameTemplate);
