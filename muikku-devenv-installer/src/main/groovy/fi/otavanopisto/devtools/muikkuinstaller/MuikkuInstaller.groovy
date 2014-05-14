@@ -9,9 +9,6 @@ import javax.crypto.interfaces.PBEKey;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils
 
-class SystemNotSupportedException extends Exception {
-};
-
 // CONFIGURATION
 def cliOptions() {
   INSTALLER_EXECUTABLE = "java -jar muikku-devenv-installer.jar"
