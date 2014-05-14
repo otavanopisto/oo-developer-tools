@@ -26,7 +26,6 @@ import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -88,17 +87,11 @@ public abstract class InstallerPhase {
       destFolder.mkdirs();
     }
     
-    if (zipFile.getName().endsWith(".gz")) {
-      FileInputStream zipFileInputStream = new FileInputStream(zipFile);
+    if (zipFile.getName().endsWith(".tar.gz")) {
       try {
-        GzipCompressorInputStream gzipInputStream = new GzipCompressorInputStream(zipFileInputStream);
-        try {
-          unzipStream(destFolder, gzipInputStream);
-        } finally {
-          gzipInputStream.close();
-        }
-      } finally {
-        zipFileInputStream.close();
+        runCommand(destFolder, "tar", "-xf", zipFile.getAbsolutePath());
+      } catch (InterruptedException e) {
+       throw new IOException(e);
       }
     } else {
       FileInputStream zipFileInputStream = new FileInputStream(zipFile);
