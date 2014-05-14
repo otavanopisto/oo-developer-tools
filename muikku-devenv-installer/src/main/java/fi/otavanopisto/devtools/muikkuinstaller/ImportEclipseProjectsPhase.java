@@ -31,11 +31,11 @@ public class ImportEclipseProjectsPhase extends AbstractEclipseConfigurationPhas
   public void execute(InstallerContext context) throws Exception {
     File eclipseFolder = getEclipseFolder(context);
     File eclipseWorkspaceFolder = getEclipseWorkspaceFolder(context, true);
-    File eclipsePluginsFolder = getEclipsePluginsFolder(eclipseFolder);
+    File eclipseDropinsFolder = getEclipseDropinsFolder(eclipseFolder);
     File eclipseExecutable = getEclipseExecutable(context, eclipseFolder);
     File sourceFolder = context.getFileOption(InstallerContext.SOURCE_FOLDER);
     
-    File yellowSheepJar = installYellowSheep(eclipsePluginsFolder);
+    File yellowSheepJar = installYellowSheep(eclipseDropinsFolder);
     try {
       List<String> poms = new ArrayList<String>();
       for (String muikkuProject : MUIKKU_PROJECTS) {
