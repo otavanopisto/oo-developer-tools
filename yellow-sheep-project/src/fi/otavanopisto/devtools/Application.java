@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.codehaus.plexus.util.StringUtils;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -24,6 +26,7 @@ import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.m2e.core.MavenPlugin;
 import org.eclipse.m2e.core.project.IMavenProjectImportResult;
 import org.eclipse.m2e.core.project.MavenProjectInfo;
+import org.eclipse.m2e.core.project.MavenUpdateRequest;
 import org.eclipse.m2e.core.project.ProjectImportConfiguration;
 import org.eclipse.wst.server.core.IRuntime;
 import org.eclipse.wst.server.core.IRuntimeType;
@@ -76,8 +79,11 @@ public class Application implements IApplication {
           System.out.println("Projects imported");
         }
       break;
-      case "configure-jbossas71":
+      case "configure-server":
         configureJBossAs71(options.get("server-path"));
+      break;      
+      case "update-projects":
+        updateMavenProjects();
       break;
     }
 
@@ -166,9 +172,9 @@ public class Application implements IApplication {
         options.put("import-poms", commandLineArgs[i + 1]);
         options.put("action", "import-poms");
         i++;
-      } else if ("-configure-jbossas71".equals(commandLineArgs[i])) {
+      } else if ("-configure-server".equals(commandLineArgs[i])) {
         options.put("server-path", commandLineArgs[i + 1]);
-        options.put("action", "configure-jbossas71");
+        options.put("action", "configure-server");
       } else if ("-m2e-annotation-processing-mode".equals(commandLineArgs[i])) {
         options.put("annotation-processing-mode", commandLineArgs[i + 1]);
         options.put("action", "annotation-processing-mode");
@@ -179,6 +185,12 @@ public class Application implements IApplication {
     }
 
     return options;
+  }
+  
+  private void updateMavenProjects() throws CoreException{
+    IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+    MavenUpdateRequest req = new MavenUpdateRequest(projects, false, false);
+    MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(req, new ConsoleProgressMonitor());
   }
 
   private void importPomFiles(String projectNameTemplate, List<File> pomFiles) throws Exception {
