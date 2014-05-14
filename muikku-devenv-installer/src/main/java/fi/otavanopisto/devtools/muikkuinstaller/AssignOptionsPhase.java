@@ -9,6 +9,8 @@ public class AssignOptionsPhase extends InstallerPhase {
 //    context.setOption(InstallerContext.ECLIPSE_FOLDER, "/tmp/e/eclipse");
     context.setOption(InstallerContext.ECLIPSE_WORKSPACE_FOLDER, "/tmp/e/workspace");
     context.setOption(InstallerContext.SOURCE_FOLDER, "/tmp/e/muikku");
+    context.setOption(InstallerContext.JBOSS_FOLDER, "/tmp/e/jboss");
+    
   }
   
 
