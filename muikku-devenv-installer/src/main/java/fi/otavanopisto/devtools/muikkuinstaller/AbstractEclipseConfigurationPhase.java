@@ -8,7 +8,7 @@ import org.apache.commons.lang3.SystemUtils;
 
 public abstract class AbstractEclipseConfigurationPhase extends InstallerPhase {
   
-  private static final String YELLOW_SHEEP_JAR = "yellow-sheep-project_1.0.0.201405091449.jar";
+  private static final String YELLOW_SHEEP_JAR = "yellow-sheep-project_1.0.0.201405141022.jar";
   private static final String ECLIPSE_EXECUTABLE_WINDOWS = "eclipsec.exe";
   private static final String ECLIPSE_EXECUTABLE_LINUX = "eclipse";
   private static final String ECLIPSE_EXECUTABLE_MAC = "eclipse";
@@ -22,8 +22,8 @@ public abstract class AbstractEclipseConfigurationPhase extends InstallerPhase {
     return eclipseFolder;
   }
 
-  protected File getEclipsePluginsFolder(File eclipseFolder) {  
-    return new File(eclipseFolder, "plugins");
+  protected File getEclipseDropinsFolder(File eclipseFolder) {  
+    return new File(eclipseFolder, "dropins");
   }
   
   protected File getEclipseWorkspaceFolder(InstallerContext context, boolean createMissing) {
@@ -64,8 +64,8 @@ public abstract class AbstractEclipseConfigurationPhase extends InstallerPhase {
     }
   }
 
-  protected File installYellowSheep(File eclipsePluginsFolder) throws IOException {
-    File yellowSheepJar = new File(eclipsePluginsFolder, YELLOW_SHEEP_JAR);
+  protected File installYellowSheep(File eclipseDropinsFolder) throws IOException {
+    File yellowSheepJar = new File(eclipseDropinsFolder, YELLOW_SHEEP_JAR);
     copyResourceToFile(YELLOW_SHEEP_JAR, yellowSheepJar);
     return yellowSheepJar;
   }
