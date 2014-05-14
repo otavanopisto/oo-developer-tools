@@ -33,6 +33,15 @@ public abstract class InstallerPhase {
 
   public abstract void execute(InstallerContext context) throws Exception;
   
+  protected File getJBossHome(InstallerContext context) {
+    File jbossHome = context.getFileOption(InstallerContext.JBOSS_FOLDER, "Please enter JBoss home folder", getBaseFolder(context) + "/jboss", true);
+    if (!jbossHome.exists()) {
+      throw new ConfigurationException("Could not find JBoss home folder");
+    }
+    
+    return jbossHome;
+  }
+
   protected File getBaseFolder(InstallerContext context) {
     return new File(context.getOption(InstallerContext.BASEDIR));
   }
