@@ -13,14 +13,24 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.codehaus.plexus.util.StringUtils;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.m2e.core.MavenPlugin;
+import org.eclipse.m2e.core.project.IMavenProjectImportResult;
 import org.eclipse.m2e.core.project.MavenProjectInfo;
 import org.eclipse.m2e.core.project.ProjectImportConfiguration;
+import org.eclipse.wst.server.core.IRuntime;
+import org.eclipse.wst.server.core.IRuntimeType;
+import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
+import org.eclipse.wst.server.core.IServerType;
+import org.eclipse.wst.server.core.IServerWorkingCopy;
+import org.eclipse.wst.server.core.ServerCore;
 import org.jboss.tools.maven.apt.MavenJdtAptPlugin;
 import org.jboss.tools.maven.apt.preferences.AnnotationProcessingMode;
 import org.jboss.tools.maven.apt.preferences.IPreferencesManager;
@@ -66,12 +76,84 @@ public class Application implements IApplication {
           System.out.println("Projects imported");
         }
       break;
+      case "configure-jbossas71":
+        configureJBossAs71(options.get("server-path"));
+      break;
     }
 
     System.out.println("Waiting for background processes to end...");
     waitForBackingJobs();
+    System.out.println("Yellow Sheep Project Stopping...");
     
     return EXIT_OK;
+  }
+
+  protected void configureJBossAs71(String jbossHome) throws CoreException {
+    IRuntimeWorkingCopy runtime = null;
+    
+    IRuntimeType runtimeType = findRuntimeTypeById("org.jboss.ide.eclipse.as.runtime.71");
+    if (runtimeType != null) {
+      runtime = findRuntimeByType(runtimeType);
+      if (runtime == null) {
+        runtime = createRuntime(runtimeType, Path.fromOSString(jbossHome), "JBoss 7.1 Runtime");
+      }          
+    }
+    
+    IServerType serverType = findServerTypeById("org.jboss.ide.eclipse.as.71");
+    if (serverType != null) {
+      createServer(serverType, runtime, "JBoss 7.1 Runtime Server");
+    }
+  }
+
+  protected void createServer(IServerType serverType, IRuntimeWorkingCopy runtime, String name) throws CoreException {
+    IServerWorkingCopy server = serverType.createServer(null, null, new ConsoleProgressMonitor());
+    server.setName(name);
+    server.setRuntime(runtime);
+    server.setReadOnly(false);
+    server.save(false, new ConsoleProgressMonitor());
+  }
+  
+  private IServerType findServerTypeById(String id) {
+    IServerType[] serverTypes = ServerCore.getServerTypes();
+    for (IServerType serverType : serverTypes) {
+      if (id.equals(serverType.getId())) {
+        return serverType;
+      }
+    }
+    
+    return null;
+  }
+
+  private IRuntimeWorkingCopy findRuntimeByType(IRuntimeType runtimeType) {
+    IRuntime[] runtimes = ServerCore.getRuntimes();
+    for (IRuntime runtime : runtimes) {
+      if (runtime.getRuntimeType().getId().equals(runtimeType.getId())) {
+        return runtime.createWorkingCopy();
+      }
+    }
+    
+    return null;
+  }
+  
+  private IRuntimeWorkingCopy createRuntime(IRuntimeType runtimeType, IPath jbossHome, String name) throws CoreException {
+    IRuntimeWorkingCopy workingCopy = runtimeType.createRuntime(null, new ConsoleProgressMonitor());
+    workingCopy.setLocation(jbossHome);
+    workingCopy.setName(name);
+    workingCopy.setReadOnly(false);
+    workingCopy.save(false, new ConsoleProgressMonitor());
+    
+    return workingCopy;
+  }
+
+  private IRuntimeType findRuntimeTypeById(String id) {
+    IRuntimeType[] runtimeTypes = ServerCore.getRuntimeTypes();
+    for (IRuntimeType runtimeType : runtimeTypes) {
+      if (id.equals(runtimeType.getId())) {
+        return runtimeType;
+      }
+    }
+    
+    return null;
   }
 
   private Map<String, String> parseOptions() {
@@ -84,8 +166,9 @@ public class Application implements IApplication {
         options.put("import-poms", commandLineArgs[i + 1]);
         options.put("action", "import-poms");
         i++;
-      } else if ("-m2e-update-projects".equals(commandLineArgs[i])) {
-        options.put("action", "update-projects");
+      } else if ("-configure-jbossas71".equals(commandLineArgs[i])) {
+        options.put("server-path", commandLineArgs[i + 1]);
+        options.put("action", "configure-jbossas71");
       } else if ("-m2e-annotation-processing-mode".equals(commandLineArgs[i])) {
         options.put("annotation-processing-mode", commandLineArgs[i + 1]);
         options.put("action", "annotation-processing-mode");
@@ -111,7 +194,10 @@ public class Application implements IApplication {
     
     waitForBackingJobs();
     
-    MavenPlugin.getProjectConfigurationManager().importProjects(projectInfos, configuration, new ConsoleProgressMonitor());
+    List<IMavenProjectImportResult> importResults = MavenPlugin.getProjectConfigurationManager().importProjects(projectInfos, configuration, new ConsoleProgressMonitor());
+    for (IMavenProjectImportResult importResult : importResults) {    
+      MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(importResult.getProject(), new ConsoleProgressMonitor());
+    }
   }
 
   private void selectAnnotationProcessingMode(String mode) {
