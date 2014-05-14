@@ -14,6 +14,7 @@ public class InstallerContext {
   public static final String BASEDIR = "basedir";
   public static final String ECLIPSE_FOLDER = "eclipse.folder";
   public static final String ECLIPSE_WORKSPACE_FOLDER = "eclipse.workspace-folder";
+  public static final String JBOSS_FOLDER = "jboss.folder";
   public static final String SOURCE_FOLDER = "source.folder";
 
   public InstallerContext() {
