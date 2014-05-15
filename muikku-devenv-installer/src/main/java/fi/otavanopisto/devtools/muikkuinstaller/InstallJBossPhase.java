@@ -12,39 +12,44 @@ public class InstallJBossPhase extends InstallerPhase {
   private static final String JBOSS_ZIP_WINDOWS = "jboss.zip";
   private static final String JBOSS_ZIP_LINUX = "jboss.tar.gz";
   private static final String JBOSS_ZIP_MAC = "jboss.tar.gz";
+  
+  @Override
+  public String getName() {
+    return "Install JBoss";
+  }
 
   @Override
   public void execute(InstallerContext context) throws Exception {
-    System.out.println("Installing JBoss");
-    
-    System.out.println(" > Downloading JBoss archive");
-    File jbossZip = new File(getTempFolder(), getZipName());
-    if (!jbossZip.exists()) {
-      download(jbossZip, getDownloadUrl());
+    String downloadTaskId = startTask("Download and extract JBoss");
+    try {
+      File jbossZip = new File(getTempFolder(), getZipName());
+      if (!jbossZip.exists()) {
+        download(jbossZip, getDownloadUrl());
+      }
+      
+      unzip(jbossZip, getTempFolder());
+      
+      File tmpJbossFolder = new File(getTempFolder(), "jboss-as-7.1.1.Final");
+      File jbossFolder = null;
+      
+      if (!context.isOptionSet(InstallerContext.JBOSS_FOLDER)) {
+        File baseFolder = getBaseFolder(context);
+        jbossFolder = new File(baseFolder, "jboss-as-7.1.1.Final");
+      } else {
+        jbossFolder = context.getFileOption(InstallerContext.JBOSS_FOLDER);
+      }
+      
+      if (jbossFolder.exists()) {
+        jbossFolder.delete();
+      }
+      
+      jbossFolder.mkdirs();
+      
+      tmpJbossFolder.renameTo(jbossFolder);
+      context.setOption(InstallerContext.JBOSS_FOLDER, jbossFolder.getAbsolutePath());      
+    } finally {
+      endTask(downloadTaskId);
     }
-
-    System.out.println(" > Uncompressing JBoss archive");
-    unzip(jbossZip, getTempFolder());
-
-    System.out.println(" > Moving JBoss into the target folder");
-    File tmpJbossFolder = new File(getTempFolder(), "jboss-as-7.1.1.Final");
-    File jbossFolder = null;
-    
-    if (!context.isOptionSet(InstallerContext.JBOSS_FOLDER)) {
-      File baseFolder = getBaseFolder(context);
-      jbossFolder = new File(baseFolder, "jboss-as-7.1.1.Final");
-    } else {
-      jbossFolder = context.getFileOption(InstallerContext.JBOSS_FOLDER);
-    }
-    
-    if (jbossFolder.exists()) {
-      jbossFolder.delete();
-    }
-    
-    jbossFolder.mkdirs();
-    
-    tmpJbossFolder.renameTo(jbossFolder);
-    context.setOption(InstallerContext.JBOSS_FOLDER, jbossFolder.getAbsolutePath());
   }
   
   private String getZipName() {
