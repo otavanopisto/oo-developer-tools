@@ -66,6 +66,10 @@ public abstract class InstallerPhase {
     return new File(context.getOption(InstallerContext.BASEDIR));
   }
 
+  protected File getSourceFolder(InstallerContext context) {
+    return context.getFileOption(InstallerContext.SOURCE_FOLDER, "Please enter folder containing Muikku source code", getBaseFolder(context) + "/muikku", true);
+  }
+
   protected File getTempFolder() {
     File tempFolder = new File(System.getProperty("java.io.tmpdir"), "muikku-installer-temp");
     if (!tempFolder.exists()) {
