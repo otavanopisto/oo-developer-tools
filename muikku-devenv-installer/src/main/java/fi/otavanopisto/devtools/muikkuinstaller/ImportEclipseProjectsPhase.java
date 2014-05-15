@@ -1,6 +1,7 @@
 package fi.otavanopisto.devtools.muikkuinstaller;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,19 +43,34 @@ public class ImportEclipseProjectsPhase extends AbstractEclipseConfigurationPhas
         poms.add(sourceFolder.getAbsolutePath() + '/' + muikkuProject);
       }
       
-      List<String> arguments = new ArrayList<String>();
-//      arguments.add("-nosplash");
-      arguments.add("-application");
-      arguments.add("yellow-sheep-project.yellow-sheep-project");
-      arguments.add("-data");
-      arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
-      arguments.add("-m2e-import-poms");
-      arguments.add(StringUtils.join(poms, ','));
-
-      runEclipse(context, eclipseFolder, eclipseExecutable, arguments);      
+      importProjects(context, eclipseWorkspaceFolder, eclipseFolder, eclipseExecutable, poms);
+      updateProjects(context, eclipseWorkspaceFolder, eclipseFolder, eclipseExecutable);
     } finally {
       yellowSheepJar.delete();
     }
+  }
+
+  protected void importProjects(InstallerContext context, File eclipseWorkspaceFolder, File eclipseFolder, File eclipseExecutable, List<String> poms) throws IOException, InterruptedException {
+    List<String> arguments = new ArrayList<String>();
+    arguments.add("-nosplash");
+    arguments.add("-application");
+    arguments.add("yellow-sheep-project.yellow-sheep-project");
+    arguments.add("-data");
+    arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
+    arguments.add("-m2e-import-poms");
+    arguments.add(StringUtils.join(poms, ','));
+    runEclipse(context, eclipseFolder, eclipseExecutable, arguments);      
+  }
+
+  protected void updateProjects(InstallerContext context, File eclipseWorkspaceFolder, File eclipseFolder, File eclipseExecutable) throws IOException, InterruptedException {
+    List<String> arguments = new ArrayList<String>();
+    arguments.add("-nosplash");
+    arguments.add("-application");
+    arguments.add("yellow-sheep-project.yellow-sheep-project");
+    arguments.add("-data");
+    arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
+    arguments.add("-update-projects");
+    runEclipse(context, eclipseFolder, eclipseExecutable, arguments);      
   }
   
 }
