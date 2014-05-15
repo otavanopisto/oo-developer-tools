@@ -29,12 +29,15 @@ import org.eclipse.m2e.core.MavenPlugin;
 import org.eclipse.m2e.core.project.MavenProjectInfo;
 import org.eclipse.m2e.core.project.MavenUpdateRequest;
 import org.eclipse.m2e.core.project.ProjectImportConfiguration;
+import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IRuntime;
 import org.eclipse.wst.server.core.IRuntimeType;
 import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
+import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.IServerType;
 import org.eclipse.wst.server.core.IServerWorkingCopy;
 import org.eclipse.wst.server.core.ServerCore;
+import org.eclipse.wst.server.core.ServerUtil;
 import org.jboss.tools.maven.apt.MavenJdtAptPlugin;
 import org.jboss.tools.maven.apt.preferences.AnnotationProcessingMode;
 import org.jboss.tools.maven.apt.preferences.IPreferencesManager;
@@ -83,6 +86,9 @@ public class Application implements IApplication {
       case "configure-jbossas71":
         configureJBossAs71(options.get("server-path"));
       break;      
+      case "import-jbossas71-project":
+        importJBossAs71Project(options.get("import-project"));
+      break;
       case "update-projects":
         updateMavenProjects();
       break;
@@ -107,6 +113,39 @@ public class Application implements IApplication {
     } finally {
       fileInputStream.close();
     }
+  }
+  
+  protected void importJBossAs71Project(String projectName) {
+    IServer server = findServerByTypeId("org.jboss.ide.eclipse.as.71");
+
+    IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
+    if (project != null) {
+      IModule module = ServerUtil.getModule(project);
+      if (module != null) {
+        try {
+          IServerWorkingCopy workingCopy = server.createWorkingCopy();
+          workingCopy.modifyModules(new IModule[] { module }, new IModule[] {}, new NullProgressMonitor());
+          workingCopy.save(false, new NullProgressMonitor());
+          server.publish(IServer.PUBLISH_FULL, new NullProgressMonitor());
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      } else {
+        System.out.println("Could not find module for project: " + projectName);
+      }
+    } else {
+      System.out.println("Could not find project: " + projectName);
+    }
+  }
+  
+  private IServer findServerByTypeId(String typeId) {
+    for (IServer server : ServerCore.getServers()) {
+      if (typeId.equals(server.getServerType().getId())) {
+        return server;
+      }
+    }
+    
+    return null;
   }
 
   protected void configureJBossAs71(String jbossHome) throws CoreException {
@@ -190,6 +229,9 @@ public class Application implements IApplication {
       } else if ("-configure-jbossas71".equals(commandLineArgs[i])) {
         options.put("server-path", commandLineArgs[i + 1]);
         options.put("action", "configure-jbossas71");
+      }  else if ("-import-jbossas71-project".equals(commandLineArgs[i])) {
+        options.put("import-project", commandLineArgs[i + 1]);
+        options.put("action", "import-jbossas71-project");
       } else if ("-m2e-annotation-processing-mode".equals(commandLineArgs[i])) {
         options.put("annotation-processing-mode", commandLineArgs[i + 1]);
         options.put("action", "annotation-processing-mode");
@@ -204,6 +246,8 @@ public class Application implements IApplication {
 
       i++;
     }
+    
+    
 
     return options;
   }
