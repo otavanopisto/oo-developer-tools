@@ -2,6 +2,7 @@ package fi.otavanopisto.devtools;
 
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,10 +22,10 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.core.runtime.preferences.IPreferencesService;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.m2e.core.MavenPlugin;
-import org.eclipse.m2e.core.project.IMavenProjectImportResult;
 import org.eclipse.m2e.core.project.MavenProjectInfo;
 import org.eclipse.m2e.core.project.MavenUpdateRequest;
 import org.eclipse.m2e.core.project.ProjectImportConfiguration;
@@ -79,11 +80,14 @@ public class Application implements IApplication {
           System.out.println("Projects imported");
         }
       break;
-      case "configure-server":
+      case "configure-jbossas71":
         configureJBossAs71(options.get("server-path"));
       break;      
       case "update-projects":
         updateMavenProjects();
+      break;
+      case "import-preferences":
+        importPreferences(options.get("preferences-file"));
       break;
     }
 
@@ -92,6 +96,17 @@ public class Application implements IApplication {
     System.out.println("Yellow Sheep Project Stopping...");
     
     return EXIT_OK;
+  }
+
+  private void importPreferences(String fileName) throws CoreException, IOException {
+    IPreferencesService service = Platform.getPreferencesService();
+    
+    FileInputStream fileInputStream = new FileInputStream(fileName);
+    try {
+      service.importPreferences(fileInputStream);
+    } finally {
+      fileInputStream.close();
+    }
   }
 
   protected void configureJBossAs71(String jbossHome) throws CoreException {
@@ -172,12 +187,18 @@ public class Application implements IApplication {
         options.put("import-poms", commandLineArgs[i + 1]);
         options.put("action", "import-poms");
         i++;
-      } else if ("-configure-server".equals(commandLineArgs[i])) {
+      } else if ("-configure-jbossas71".equals(commandLineArgs[i])) {
         options.put("server-path", commandLineArgs[i + 1]);
-        options.put("action", "configure-server");
+        options.put("action", "configure-jbossas71");
       } else if ("-m2e-annotation-processing-mode".equals(commandLineArgs[i])) {
         options.put("annotation-processing-mode", commandLineArgs[i + 1]);
         options.put("action", "annotation-processing-mode");
+        i++;
+      } else if ("-update-projects".equals(commandLineArgs[i])) {
+        options.put("action", "update-projects");
+      } else if ("-import-preferences".equals(commandLineArgs[i])) {
+        options.put("preferences-file", commandLineArgs[i + 1]);
+        options.put("action", "import-preferences");
         i++;
       }
 
@@ -189,8 +210,10 @@ public class Application implements IApplication {
   
   private void updateMavenProjects() throws CoreException{
     IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
-    MavenUpdateRequest req = new MavenUpdateRequest(projects, false, false);
-    MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(req, new ConsoleProgressMonitor());
+    for (IProject project : projects) {
+      MavenUpdateRequest req = new MavenUpdateRequest(project, false, false);
+      MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(req, new ConsoleProgressMonitor());
+    }
   }
 
   private void importPomFiles(String projectNameTemplate, List<File> pomFiles) throws Exception {
@@ -206,9 +229,11 @@ public class Application implements IApplication {
     
     waitForBackingJobs();
     
-    List<IMavenProjectImportResult> importResults = MavenPlugin.getProjectConfigurationManager().importProjects(projectInfos, configuration, new ConsoleProgressMonitor());
-    for (IMavenProjectImportResult importResult : importResults) {    
-      MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(importResult.getProject(), new ConsoleProgressMonitor());
+    try {
+      MavenPlugin.getProjectConfigurationManager().importProjects(projectInfos, configuration, new ConsoleProgressMonitor());
+    } catch (Throwable t) {
+      System.err.println("Project import threw an exception: ");
+      t.printStackTrace();
     }
   }
 
@@ -250,7 +275,7 @@ public class Application implements IApplication {
   }
 
   private void waitForBackingJobs() throws InterruptedException {
-    while (!Job.getJobManager().isIdle()) {
+    while (!Job.getJobManager().isIdle() && (Job.getJobManager().currentJob() != null)) {
       TimeUnit.SECONDS.sleep(10);
     }
   }
