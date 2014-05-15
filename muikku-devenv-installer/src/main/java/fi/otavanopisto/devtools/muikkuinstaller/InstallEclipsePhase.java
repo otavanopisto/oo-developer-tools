@@ -13,32 +13,48 @@ public class InstallEclipsePhase extends InstallerPhase {
   private static final String ECLIPSE_ZIP_LINUX = "eclipse.tar.gz";
   private static final String ECLIPSE_ZIP_MAC = "eclipse.tar.gz";
 
+  
+  @Override
+  public String getName() {
+    return "Install Eclipse";
+  }
+  
   @Override
   public void execute(InstallerContext context) throws Exception {
     File eclipseZip = new File(getTempFolder(), getZipName());
     if (!eclipseZip.exists()) {
-      download(eclipseZip, getDownloadUrl());
+      String taskId = startTask("Downloading Eclipse");
+      try {
+        download(eclipseZip, getDownloadUrl());
+      } finally {
+        endTask(taskId);
+      }
     }
     
-    unzip(eclipseZip, getTempFolder());
-    File tmpEclipseFolder = new File(getTempFolder(), "eclipse");
-    File eclipseFolder = null;
-    
-    if (!context.isOptionSet(InstallerContext.ECLIPSE_FOLDER)) {
-      File baseFolder = getBaseFolder(context);
-      eclipseFolder = new File(baseFolder, "eclipse");
-    } else {
-      eclipseFolder = context.getFileOption(InstallerContext.ECLIPSE_FOLDER);
+    String taskId = startTask("Uncompressing Eclipse");
+    try {
+      unzip(eclipseZip, getTempFolder());
+      File tmpEclipseFolder = new File(getTempFolder(), "eclipse");
+      File eclipseFolder = null;
+      
+      if (!context.isOptionSet(InstallerContext.ECLIPSE_FOLDER)) {
+        File baseFolder = getBaseFolder(context);
+        eclipseFolder = new File(baseFolder, "eclipse");
+      } else {
+        eclipseFolder = context.getFileOption(InstallerContext.ECLIPSE_FOLDER);
+      }
+      
+      if (eclipseFolder.exists()) {
+        eclipseFolder.delete();
+      }
+      
+      eclipseFolder.mkdirs();
+      
+      tmpEclipseFolder.renameTo(eclipseFolder);
+      context.setOption(InstallerContext.ECLIPSE_FOLDER, eclipseFolder.getAbsolutePath());
+    } finally {
+      endTask(taskId);
     }
-    
-    if (eclipseFolder.exists()) {
-      eclipseFolder.delete();
-    }
-    
-    eclipseFolder.mkdirs();
-    
-    tmpEclipseFolder.renameTo(eclipseFolder);
-    context.setOption(InstallerContext.ECLIPSE_FOLDER, eclipseFolder.getAbsolutePath());
   }
   
   private String getZipName() {
