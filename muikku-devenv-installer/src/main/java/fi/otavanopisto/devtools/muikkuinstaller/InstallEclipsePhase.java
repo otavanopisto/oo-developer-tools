@@ -6,9 +6,9 @@ import org.apache.commons.lang3.SystemUtils;
 
 public class InstallEclipsePhase extends InstallerPhase {
   
-  private static final String ECLIPSE_URL_WINDOWS = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR1-win32-x86_64.zip";
-  private static final String ECLIPSE_URL_LINUX = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR1-linux-gtk-x86_64.tar.gz";
-  private static final String ECLIPSE_URL_MAC = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR1-macosx-cocoa-x86_64.tar.gz";
+  private static final String ECLIPSE_URL_WINDOWS = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR2-win32-x86_64.zip";
+  private static final String ECLIPSE_URL_LINUX = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR2-linux-gtk-x86_64.tar.gz";
+  private static final String ECLIPSE_URL_MAC = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR2-macosx-cocoa-x86_64.tar.gz";
   private static final String ECLIPSE_ZIP_WINDOWS = "eclipse.zip";
   private static final String ECLIPSE_ZIP_LINUX = "eclipse.tar.gz";
   private static final String ECLIPSE_ZIP_MAC = "eclipse.tar.gz";
