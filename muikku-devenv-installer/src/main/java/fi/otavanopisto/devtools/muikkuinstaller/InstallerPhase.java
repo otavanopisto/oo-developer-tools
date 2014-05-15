@@ -18,8 +18,11 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveException;
@@ -27,11 +30,28 @@ import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 
 public abstract class InstallerPhase {
-
+  
   public abstract void execute(InstallerContext context) throws Exception;
+  public abstract String getName();
+  
+  protected String startTask(String task) {
+    System.out.print("> " + task);
+    
+    String id = UUID.randomUUID().toString();
+    DotThread dotThread = new DotThread(task.length());
+    
+    dotTasks.put(id, dotThread);
+    dotThread.start();
+    
+    return id;
+  }
+  
+  protected void endTask(String id) {
+    dotTasks.get(id).interrupt();
+    System.out.println("done.");
+  }
   
   protected File getJBossHome(InstallerContext context) {
     File jbossHome = context.getFileOption(InstallerContext.JBOSS_FOLDER, "Please enter JBoss home folder", getBaseFolder(context) + "/jboss", true);
@@ -173,12 +193,10 @@ public abstract class InstallerPhase {
   protected void runCommand(File workDirectory, String... argv) throws IOException, InterruptedException {
     ProcessBuilder processBuilder = new ProcessBuilder(argv);
     processBuilder.redirectInput(Redirect.INHERIT);
-    processBuilder.redirectOutput(Redirect.INHERIT);
-    processBuilder.redirectError(Redirect.INHERIT);
+    // processBuilder.redirectOutput(Redirect.INHERIT);
+//    processBuilder.redirectError(Redirect.INHERIT);
     processBuilder.directory(workDirectory);
-
-    System.out.println("Running command: " + StringUtils.join(argv, ' '));
-
+//    System.out.println("Running command: " + StringUtils.join(argv, ' '));
     Process process = processBuilder.start();
     process.waitFor();
   }
@@ -212,5 +230,32 @@ public abstract class InstallerPhase {
       resourceStream.close();
     }
   }
-
+  
+  private class DotThread extends Thread {
+    
+    public DotThread(int nameLength) {
+      lineFeedIterator = nameLength;
+    }
+    
+    @Override
+    public void run() {
+      while (!isInterrupted()) {
+        try {
+          sleep(300);
+          System.out.print('.');
+          lineFeedIterator++;
+          if (lineFeedIterator >= 70) {
+            System.out.print("\n  ");
+            lineFeedIterator = 0;
+          }
+        } catch (InterruptedException e) {
+          return;
+        }
+      }
+    }
+  
+    private int lineFeedIterator;
+  }
+  
+  private Map<String, DotThread> dotTasks = new HashMap<String, DotThread>();
 }
