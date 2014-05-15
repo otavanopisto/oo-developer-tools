@@ -22,7 +22,6 @@ public class InstallerContext {
   }
   
   public void setOption(String name, String value) {
-    System.out.println(name + " == " + value);
     this.options.put(name, value);
   }
 
