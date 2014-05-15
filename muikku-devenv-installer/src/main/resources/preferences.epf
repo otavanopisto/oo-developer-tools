@@ -1,4 +1,5 @@
 #Wed May 14 14:09:16 EEST 2014
+/instance/org.eclipse.ui/defaultPerspectiveId=org.eclipse.jst.j2ee.J2EEPerspective
 /instance/org.eclipse.wst.jsdt.core/org.eclipse.wst.jsdt.core.formatter.insert_new_line_before_while_in_do_statement=do not insert
 /instance/org.eclipse.wst.jsdt.core/org.eclipse.wst.jsdt.core.formatter.indent_statements_compare_to_body=true
 /instance/org.eclipse.wst.jsdt.core/org.eclipse.wst.jsdt.core.formatter.insert_space_before_closing_paren_in_switch=do not insert
