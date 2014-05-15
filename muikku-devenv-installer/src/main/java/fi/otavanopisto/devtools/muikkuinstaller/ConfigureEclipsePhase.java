@@ -9,8 +9,12 @@ import java.util.List;
 public class ConfigureEclipsePhase extends AbstractEclipseConfigurationPhase {
   
   @Override
+  public String getName() {
+    return "Configure Eclipse";
+  }
+  
+  @Override
   public void execute(InstallerContext context) throws Exception {
-    System.out.println("Configuring Eclipse");
     File eclipseFolder = getEclipseFolder(context);
     File eclipseWorkspaceFolder = getEclipseWorkspaceFolder(context, true);
     File eclipseDropinsFolder = getEclipseDropinsFolder(eclipseFolder);
@@ -28,44 +32,56 @@ public class ConfigureEclipsePhase extends AbstractEclipseConfigurationPhase {
   }
 
   private void importPreferences(InstallerContext context, File eclipseFolder, File eclipseExecutable, File eclipseWorkspaceFolder) throws IOException, InterruptedException, URISyntaxException {
-    System.out.println(" > Importing preferences");
-    String preferencesFile = new File(getClass().getResource("/resources/preferences.epf").toURI()).getAbsolutePath();
-    
-    List<String> arguments = new ArrayList<String>();
-    arguments.add("-nosplash");
-    arguments.add("-application");
-    arguments.add("yellow-sheep-project.yellow-sheep-project");
-    arguments.add("-data");
-    arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
-    arguments.add("-import-preferences");
-    arguments.add(preferencesFile);
-    runEclipse(context, eclipseFolder, eclipseExecutable, arguments);  
+    String taskId = startTask("Import Preferences");
+    try {
+      String preferencesFile = new File(getClass().getResource("/resources/preferences.epf").toURI()).getAbsolutePath();
+      
+      List<String> arguments = new ArrayList<String>();
+      arguments.add("-nosplash");
+      arguments.add("-application");
+      arguments.add("yellow-sheep-project.yellow-sheep-project");
+      arguments.add("-data");
+      arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
+      arguments.add("-import-preferences");
+      arguments.add(preferencesFile);
+      runEclipse(context, eclipseFolder, eclipseExecutable, arguments);  
+    } finally {
+      endTask(taskId);
+    }
   }
   
   private void setMavenAnnotationProcessing(InstallerContext context, File eclipseFolder, File eclipseExecutable, File eclipseWorkspaceFolder) throws IOException, InterruptedException {
-    System.out.println(" > Changing m2e settings");
-    List<String> arguments = new ArrayList<String>();
-    arguments.add("-nosplash");
-    arguments.add("-application");
-    arguments.add("yellow-sheep-project.yellow-sheep-project");
-    arguments.add("-data");
-    arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
-    arguments.add("-m2e-annotation-processing-mode");
-    arguments.add("maven_execution");
-    runEclipse(context, eclipseFolder, eclipseExecutable, arguments);  
+    String taskId = startTask("Changing m2e settings");
+    try {
+      List<String> arguments = new ArrayList<String>();
+      arguments.add("-nosplash");
+      arguments.add("-application");
+      arguments.add("yellow-sheep-project.yellow-sheep-project");
+      arguments.add("-data");
+      arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
+      arguments.add("-m2e-annotation-processing-mode");
+      arguments.add("maven_execution");
+      runEclipse(context, eclipseFolder, eclipseExecutable, arguments);  
+    } finally {
+      endTask(taskId);
+    }
   }
   
   private void createServer(InstallerContext context, File eclipseFolder, File eclipseExecutable, File jbossHome, File eclipseWorkspaceFolder) throws IOException, InterruptedException {
-    System.out.println(" > Adding JBoss AS 7.1 server");
-    List<String> arguments = new ArrayList<String>();
-    arguments.add("-nosplash");
-    arguments.add("-application");
-    arguments.add("yellow-sheep-project.yellow-sheep-project");
-    arguments.add("-data");
-    arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
-    arguments.add("-configure-jbossas71");
-    arguments.add(jbossHome.getAbsolutePath());
-    runEclipse(context, eclipseFolder, eclipseExecutable, arguments);
+    String taskId = startTask("Adding JBoss AS 7.1 server");
+    try {
+      List<String> arguments = new ArrayList<String>();
+      arguments.add("-nosplash");
+      arguments.add("-application");
+      arguments.add("yellow-sheep-project.yellow-sheep-project");
+      arguments.add("-data");
+      arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
+      arguments.add("-configure-jbossas71");
+      arguments.add(jbossHome.getAbsolutePath());
+      runEclipse(context, eclipseFolder, eclipseExecutable, arguments);
+    } finally {
+      endTask(taskId);
+    }
   }
   
 }
