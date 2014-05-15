@@ -15,6 +15,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.codehaus.plexus.util.StringUtils;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -29,6 +31,9 @@ import org.eclipse.m2e.core.MavenPlugin;
 import org.eclipse.m2e.core.project.MavenProjectInfo;
 import org.eclipse.m2e.core.project.MavenUpdateRequest;
 import org.eclipse.m2e.core.project.ProjectImportConfiguration;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.internal.Perspective;
+import org.eclipse.ui.internal.PerspectiveSwitcher;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IRuntime;
 import org.eclipse.wst.server.core.IRuntimeType;
@@ -90,7 +95,7 @@ public class Application implements IApplication {
         importJBossAs71Project(options.get("import-project"));
       break;
       case "update-projects":
-        updateMavenProjects();
+        updateMavenProjects(options.get("update-projects"));
       break;
       case "import-preferences":
         importPreferences(options.get("preferences-file"));
@@ -237,7 +242,9 @@ public class Application implements IApplication {
         options.put("action", "annotation-processing-mode");
         i++;
       } else if ("-update-projects".equals(commandLineArgs[i])) {
+        options.put("update-projects", commandLineArgs[i + 1]);
         options.put("action", "update-projects");
+        i++;
       } else if ("-import-preferences".equals(commandLineArgs[i])) {
         options.put("preferences-file", commandLineArgs[i + 1]);
         options.put("action", "import-preferences");
@@ -246,17 +253,29 @@ public class Application implements IApplication {
 
       i++;
     }
-    
-    
 
     return options;
   }
   
-  private void updateMavenProjects() throws CoreException{
-    IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
-    for (IProject project : projects) {
-      MavenUpdateRequest req = new MavenUpdateRequest(project, false, false);
-      MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(req, new ConsoleProgressMonitor());
+  private void updateMavenProjects(String projectNames) throws CoreException, InterruptedException{
+    if (StringUtils.isNotBlank(projectNames)) {
+      List<IProject> projects = new ArrayList<>();
+      IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
+      
+      for (String projectName : projectNames.split(",")) {
+        projects.add(workspaceRoot.getProject(projectName));
+      }
+      
+      for (IProject project : projects) {
+        MavenUpdateRequest req = new MavenUpdateRequest(project, false, false);
+        MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(req, new ConsoleProgressMonitor());
+      }
+      
+      waitForBackingJobs();
+      
+      for (IProject project : projects) {
+        project.build(IncrementalProjectBuilder.FULL_BUILD, new ConsoleProgressMonitor());
+      }      
     }
   }
 
@@ -285,7 +304,7 @@ public class Application implements IApplication {
     IPreferencesManager preferencesManager = MavenJdtAptPlugin.getDefault().getPreferencesManager();
     preferencesManager.setAnnotationProcessorMode(null, AnnotationProcessingMode.valueOf(mode));
   }
-
+  
   @Override
   public void stop() {
 
