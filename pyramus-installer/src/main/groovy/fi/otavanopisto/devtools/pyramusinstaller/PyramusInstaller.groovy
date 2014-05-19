@@ -451,7 +451,7 @@ try {
   
   if (SELF_SIGNED_CERT) {
     println "Generating self-signed sertificate..."
-    keystoreFile = jboss_path + '/standalone/configuration/pyramus.keystore';
+    keystoreFile = "$jboss_path/standalone/configuration/pyramus.keystore";
     new File(keystoreFile).delete();
     keyAlias = "pyramus";
     keyPassword = "pyramus";
@@ -573,8 +573,7 @@ try {
     
     println "### Installation complete ###"
     println "Next you need to start you JBoss server by executing ${-> jboss_path + JBOSS_STANDALONE_EXECUTABLE} and navigate"
-    println "Into https://${-> hostname}:8443/system/initialdata.page with your webbrowser and follow the instructions on the screen"
-    println "Username and password are admin / query by default (change these after installation)"
+    println "Into https://${-> hostname}:8443/system/setupwizard/index.page with your webbrowser and follow the instructions on the screen"
   }
 
   println "Done."
