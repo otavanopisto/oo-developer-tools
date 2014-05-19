@@ -6,6 +6,11 @@ import org.apache.commons.io.FileUtils;
 
 
 public class AssignOptionsPhase extends InstallerPhase {
+
+  @Override
+  public String getName() {
+    return "Options";
+  }
   
   @Override
   public void execute(InstallerContext context) throws Exception {
