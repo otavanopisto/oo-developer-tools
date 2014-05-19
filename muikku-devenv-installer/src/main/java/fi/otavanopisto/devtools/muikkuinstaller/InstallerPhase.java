@@ -228,8 +228,7 @@ public abstract class InstallerPhase {
     if (workDirectory != null) {
       processBuilder.directory(workDirectory);
     }
-    
-    System.out.println("Running command: " + StringUtils.join(argv, ' '));
+
     Process process = processBuilder.start();
     return process.waitFor();
   }
