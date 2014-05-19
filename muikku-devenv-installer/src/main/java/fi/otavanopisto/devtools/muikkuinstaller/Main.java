@@ -16,13 +16,13 @@ public class Main {
 
   public static void main(String[] args) {
     try {
-
       ArrayList<InstallerPhase> phases = new ArrayList<InstallerPhase>();
 
       CommandLineParser parser = new GnuParser();
       Options options = new Options();
       options.addOption("e", false, "install Eclipse");
       options.addOption("E", false, "install required plugins for Eclipse");
+      options.addOption("c", false, "configure eclipse");
       options.addOption("j", false, "install JBoss AS");
       options.addOption("J", false, "configure JBoss AS");
       options.addOption("D", false, "drop and create MySQL/MariaDB database and user (requires mysql)");
@@ -38,8 +38,11 @@ public class Main {
         formatter.printHelp(INSTALLER_EXECUTABLE + " [options] basedir", options);
         System.exit(0);
       }
+        
+      phases.add(new AssignOptionsPhase());
+    
       if (cmd.hasOption('a')) {
-        phases.add(new AssignOptionsPhase());
+        phases.add(new CreateDatabasePhase());
         phases.add(new InstallJBossPhase());
         phases.add(new InstallEclipsePhase());
         phases.add(new InstallEclipsePluginsPhase());
@@ -47,20 +50,22 @@ public class Main {
         phases.add(new CloneGitRepositoryPhase());
         phases.add(new ImportEclipseProjectsPhase());
       } else {
-        phases.add(new AssignOptionsPhase());
+        if (cmd.hasOption('D')) {
+          phases.add(new CreateDatabasePhase());
+        }
+        if (cmd.hasOption('j')) {
+          phases.add(new InstallJBossPhase());
+        }
         if (cmd.hasOption('e')) {
           phases.add(new InstallEclipsePhase());
         }
         if (cmd.hasOption('E')) {
           phases.add(new InstallEclipsePluginsPhase());
         }
-        if (cmd.hasOption('j')) {
-          phases.add(new InstallJBossPhase());
+        if (cmd.hasOption('c')) {
+          phases.add(new ConfigureEclipsePhase());
         }
         if (cmd.hasOption('J')) {
-          throw new UnsupportedOperationException("Not supported yet");
-        }
-        if (cmd.hasOption('D')) {
           throw new UnsupportedOperationException("Not supported yet");
         }
         if (cmd.hasOption('r')) {

@@ -30,6 +30,7 @@ import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public abstract class InstallerPhase {
   
@@ -62,6 +63,26 @@ public abstract class InstallerPhase {
     return jbossHome;
   }
 
+  protected String getMySQLAdminUsername(InstallerContext context) {
+    return context.getOption(InstallerContext.MYSQL_ADMIN_USERNAME, "Please enter MySQL administrator username", "root", true);
+  }
+  
+  protected String getMySQLAdminPassword(InstallerContext context) {
+    return context.getPasswordOption(InstallerContext.MYSQL_ADMIN_PASSWORD, "Please enter MySQL administrator password", "Enter the password again");
+  }
+
+  protected String getMySQLUser(InstallerContext context) {
+    return context.getOption(InstallerContext.MYSQL_USER, "Please enter the username for Muikku database user", "muikku", true);
+  }
+  
+  protected String getMySQLPassword(InstallerContext context) {
+    return context.getPasswordOption(InstallerContext.MYSQL_PASSWORD, "Please enter the password for Muikku database user", "Enter the password again");
+  }
+
+  protected String getMySQLDatabase(InstallerContext context) {
+    return context.getOption(InstallerContext.MYSQL_DATABASE, "Please enter the database name for Muikku", "muikku", true);
+  }
+  
   protected File getBaseFolder(InstallerContext context) {
     return new File(context.getOption(InstallerContext.BASEDIR));
   }
@@ -199,15 +220,18 @@ public abstract class InstallerPhase {
     return PosixFilePermissions.fromString(result.toString());
   }
 
-  protected void runCommand(File workDirectory, String... argv) throws IOException, InterruptedException {
+  protected int runCommand(File workDirectory, String... argv) throws IOException, InterruptedException {
     ProcessBuilder processBuilder = new ProcessBuilder(argv);
     processBuilder.redirectInput(Redirect.INHERIT);
-    // processBuilder.redirectOutput(Redirect.INHERIT);
-//    processBuilder.redirectError(Redirect.INHERIT);
-    processBuilder.directory(workDirectory);
-//    System.out.println("Running command: " + StringUtils.join(argv, ' '));
+    processBuilder.redirectOutput(Redirect.INHERIT);
+    processBuilder.redirectError(Redirect.INHERIT);
+    if (workDirectory != null) {
+      processBuilder.directory(workDirectory);
+    }
+    
+    System.out.println("Running command: " + StringUtils.join(argv, ' '));
     Process process = processBuilder.start();
-    process.waitFor();
+    return process.waitFor();
   }
 
   protected void runCommand(File workDirectory, File binary, String... argv) throws IOException, InterruptedException {
