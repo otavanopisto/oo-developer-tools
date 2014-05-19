@@ -18,24 +18,77 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 public abstract class InstallerPhase {
-
+  
   public abstract void execute(InstallerContext context) throws Exception;
+  public abstract String getName();
+  
+  protected String startTask(String task) {
+    System.out.print("> " + task + ".");
+    
+    String id = UUID.randomUUID().toString();
+    DotThread dotThread = new DotThread(task.length() + 1);
+    
+    dotTasks.put(id, dotThread);
+    dotThread.start();
+    
+    return id;
+  }
+  
+  protected void endTask(String id) {
+    dotTasks.get(id).interrupt();
+    System.out.println("done.");
+  }
+  
+  protected File getJBossHome(InstallerContext context) {
+    File jbossHome = context.getFileOption(InstallerContext.JBOSS_FOLDER, "Please enter JBoss home folder", getBaseFolder(context) + "/jboss", true);
+    if (!jbossHome.exists()) {
+      throw new ConfigurationException("Could not find JBoss home folder");
+    }
+    
+    return jbossHome;
+  }
+
+  protected String getMySQLAdminUsername(InstallerContext context) {
+    return context.getOption(InstallerContext.MYSQL_ADMIN_USERNAME, "Please enter MySQL administrator username", "root", true);
+  }
+  
+  protected String getMySQLAdminPassword(InstallerContext context) {
+    return context.getPasswordOption(InstallerContext.MYSQL_ADMIN_PASSWORD, "Please enter MySQL administrator password", "Enter the password again");
+  }
+
+  protected String getMySQLUser(InstallerContext context) {
+    return context.getOption(InstallerContext.MYSQL_USER, "Please enter the username for Muikku database user", "muikku", true);
+  }
+  
+  protected String getMySQLPassword(InstallerContext context) {
+    return context.getPasswordOption(InstallerContext.MYSQL_PASSWORD, "Please enter the password for Muikku database user", "Enter the password again");
+  }
+
+  protected String getMySQLDatabase(InstallerContext context) {
+    return context.getOption(InstallerContext.MYSQL_DATABASE, "Please enter the database name for Muikku", "muikku", true);
+  }
   
   protected File getBaseFolder(InstallerContext context) {
     return new File(context.getOption(InstallerContext.BASEDIR));
+  }
+
+  protected File getSourceFolder(InstallerContext context) {
+    return context.getFileOption(InstallerContext.SOURCE_FOLDER, "Please enter folder containing Muikku source code", getBaseFolder(context) + "/muikku", true);
   }
 
   protected File getTempFolder() {
@@ -70,12 +123,17 @@ public abstract class InstallerPhase {
       targetFile.createNewFile();
     }
 
-    FileOutputStream fileOutputStream = new FileOutputStream(targetFile);
     try {
-      download(fileOutputStream, address);
-    } finally {
-      fileOutputStream.flush();
-      fileOutputStream.close();
+      FileOutputStream fileOutputStream = new FileOutputStream(targetFile);
+      try {
+        download(fileOutputStream, address);
+      } finally {
+        fileOutputStream.flush();
+        fileOutputStream.close();
+      }
+    } catch (Exception e) {
+      targetFile.delete();
+      throw new IOException(e);
     }
   }
 
@@ -88,17 +146,11 @@ public abstract class InstallerPhase {
       destFolder.mkdirs();
     }
     
-    if (zipFile.getName().endsWith(".gz")) {
-      FileInputStream zipFileInputStream = new FileInputStream(zipFile);
+    if (zipFile.getName().endsWith(".tar.gz")) {
       try {
-        GzipCompressorInputStream gzipInputStream = new GzipCompressorInputStream(zipFileInputStream);
-        try {
-          unzipStream(destFolder, gzipInputStream);
-        } finally {
-          gzipInputStream.close();
-        }
-      } finally {
-        zipFileInputStream.close();
+        runCommand(destFolder, "tar", "-xf", zipFile.getAbsolutePath());
+      } catch (InterruptedException e) {
+       throw new IOException(e);
       }
     } else {
       FileInputStream zipFileInputStream = new FileInputStream(zipFile);
@@ -168,17 +220,18 @@ public abstract class InstallerPhase {
     return PosixFilePermissions.fromString(result.toString());
   }
 
-  protected void runCommand(File workDirectory, String... argv) throws IOException, InterruptedException {
+  protected int runCommand(File workDirectory, String... argv) throws IOException, InterruptedException {
     ProcessBuilder processBuilder = new ProcessBuilder(argv);
     processBuilder.redirectInput(Redirect.INHERIT);
     processBuilder.redirectOutput(Redirect.INHERIT);
     processBuilder.redirectError(Redirect.INHERIT);
-    processBuilder.directory(workDirectory);
-
+    if (workDirectory != null) {
+      processBuilder.directory(workDirectory);
+    }
+    
     System.out.println("Running command: " + StringUtils.join(argv, ' '));
-
     Process process = processBuilder.start();
-    process.waitFor();
+    return process.waitFor();
   }
 
   protected void runCommand(File workDirectory, File binary, String... argv) throws IOException, InterruptedException {
@@ -195,6 +248,8 @@ public abstract class InstallerPhase {
   protected void copyResourceToFile(String resource, File file) throws IOException {
     InputStream resourceStream = this.getClass().getResourceAsStream("/resources/" + resource);
     try {
+      file.getParentFile().mkdirs();
+      
       if (!file.exists()) {
         file.createNewFile();
       }
@@ -210,5 +265,32 @@ public abstract class InstallerPhase {
       resourceStream.close();
     }
   }
-
+  
+  private class DotThread extends Thread {
+    
+    public DotThread(int nameLength) {
+      lineFeedIterator = nameLength;
+    }
+    
+    @Override
+    public void run() {
+      while (!isInterrupted()) {
+        try {
+          sleep(300);
+          System.out.print('.');
+          lineFeedIterator++;
+          if (lineFeedIterator >= 70) {
+            System.out.print("\n  ");
+            lineFeedIterator = 0;
+          }
+        } catch (InterruptedException e) {
+          return;
+        }
+      }
+    }
+  
+    private int lineFeedIterator;
+  }
+  
+  private Map<String, DotThread> dotTasks = new HashMap<String, DotThread>();
 }

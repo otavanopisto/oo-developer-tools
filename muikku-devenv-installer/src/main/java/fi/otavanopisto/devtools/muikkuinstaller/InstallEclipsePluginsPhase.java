@@ -60,37 +60,47 @@ public class InstallEclipsePluginsPhase extends AbstractEclipseConfigurationPhas
     "org.jboss.tools.cdi.seam.feature.feature.group",
     "org.jboss.tools.seam.feature.feature.group",
     "org.sonatype.m2e.buildhelper.feature.feature.group"
-  };
+  };  
+  
+  @Override
+  public String getName() {
+    return "Install Eclipse Plugins";
+  }
   
   @Override
   public void execute(InstallerContext context) throws Exception {
-    boolean installSource = false;
-    
-    File eclipseFolder = getEclipseFolder(context);
-    File eclipseWorkspaceFolder = getEclipseWorkspaceFolder(context, true);
-    File eclipseExecutable = getEclipseExecutable(context, eclipseFolder);
-
-    List<String> arguments = new ArrayList<String>();
-    
-    arguments.add("-nosplash");
-    arguments.add("-application");
-    arguments.add("org.eclipse.equinox.p2.director");
-    arguments.add("-data");
-    arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
-    
-    for (String repository : REPOSITORIES) {
-      arguments.add("-repository");
-      arguments.add(repository);
-    }
-    
-    for (String plugin : PLUGINS) {
-      if (installSource || !StringUtils.endsWith(plugin, ".source")) {
-        arguments.add("-installIU");
-        arguments.add(plugin);
+    String taskId = startTask("Installing plugins");
+    try {
+      boolean installSource = false;
+      
+      File eclipseFolder = getEclipseFolder(context);
+      File eclipseWorkspaceFolder = getEclipseWorkspaceFolder(context, true);
+      File eclipseExecutable = getEclipseExecutable(context, eclipseFolder);
+  
+      List<String> arguments = new ArrayList<String>();
+      
+      arguments.add("-nosplash");
+      arguments.add("-application");
+      arguments.add("org.eclipse.equinox.p2.director");
+      arguments.add("-data");
+      arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
+      
+      for (String repository : REPOSITORIES) {
+        arguments.add("-repository");
+        arguments.add(repository);
       }
+      
+      for (String plugin : PLUGINS) {
+        if (installSource || !StringUtils.endsWith(plugin, ".source")) {
+          arguments.add("-installIU");
+          arguments.add(plugin);
+        }
+      }
+      
+      runEclipse(context, eclipseFolder, eclipseExecutable, arguments);
+    } finally {
+      endTask(taskId);
     }
-    
-    runEclipse(context, eclipseFolder, eclipseExecutable, arguments);
   }
   
 }

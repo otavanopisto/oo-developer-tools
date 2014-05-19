@@ -6,39 +6,55 @@ import org.apache.commons.lang3.SystemUtils;
 
 public class InstallEclipsePhase extends InstallerPhase {
   
-  private static final String ECLIPSE_URL_WINDOWS = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR1-win32-x86_64.zip";
-  private static final String ECLIPSE_URL_LINUX = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR1-linux-gtk-x86_64.tar.gz";
-  private static final String ECLIPSE_URL_MAC = "http://eclipse.mirror.triple-it.nl/technology/epp/downloads/release/kepler/SR1/eclipse-standard-kepler-SR1-macosx-cocoa-x86_64.tar.gz";
+  private static final String ECLIPSE_URL_WINDOWS = "http://download.eclipse.org/technology/epp/downloads/release/kepler/SR2/eclipse-standard-kepler-SR2-win32-x86_64.zip";
+  private static final String ECLIPSE_URL_LINUX = "http://download.eclipse.org/technology/epp/downloads/release/kepler/SR2/eclipse-standard-kepler-SR2-linux-gtk-x86_64.tar.gz";
+  private static final String ECLIPSE_URL_MAC = "http://download.eclipse.org/technology/epp/downloads/release/kepler/SR2/eclipse-standard-kepler-SR2-macosx-cocoa-x86_64.tar.gz";
   private static final String ECLIPSE_ZIP_WINDOWS = "eclipse.zip";
   private static final String ECLIPSE_ZIP_LINUX = "eclipse.tar.gz";
   private static final String ECLIPSE_ZIP_MAC = "eclipse.tar.gz";
 
+  
+  @Override
+  public String getName() {
+    return "Install Eclipse";
+  }
+  
   @Override
   public void execute(InstallerContext context) throws Exception {
     File eclipseZip = new File(getTempFolder(), getZipName());
     if (!eclipseZip.exists()) {
-      download(eclipseZip, getDownloadUrl());
+      String taskId = startTask("Downloading Eclipse");
+      try {
+        download(eclipseZip, getDownloadUrl());
+      } finally {
+        endTask(taskId);
+      }
     }
     
-    unzip(eclipseZip, getTempFolder());
-    File tmpEclipseFolder = new File(getTempFolder(), "eclipse");
-    File eclipseFolder = null;
-    
-    if (!context.isOptionSet(InstallerContext.ECLIPSE_FOLDER)) {
-      File baseFolder = getBaseFolder(context);
-      eclipseFolder = new File(baseFolder, "eclipse");
-    } else {
-      eclipseFolder = context.getFileOption(InstallerContext.ECLIPSE_FOLDER);
+    String taskId = startTask("Uncompressing Eclipse");
+    try {
+      unzip(eclipseZip, getTempFolder());
+      File tmpEclipseFolder = new File(getTempFolder(), "eclipse");
+      File eclipseFolder = null;
+      
+      if (!context.isOptionSet(InstallerContext.ECLIPSE_FOLDER)) {
+        File baseFolder = getBaseFolder(context);
+        eclipseFolder = new File(baseFolder, "eclipse");
+      } else {
+        eclipseFolder = context.getFileOption(InstallerContext.ECLIPSE_FOLDER);
+      }
+      
+      if (eclipseFolder.exists()) {
+        eclipseFolder.delete();
+      }
+      
+      eclipseFolder.mkdirs();
+      
+      tmpEclipseFolder.renameTo(eclipseFolder);
+      context.setOption(InstallerContext.ECLIPSE_FOLDER, eclipseFolder.getAbsolutePath());
+    } finally {
+      endTask(taskId);
     }
-    
-    if (eclipseFolder.exists()) {
-      eclipseFolder.delete();
-    }
-    
-    eclipseFolder.mkdirs();
-    
-    tmpEclipseFolder.renameTo(eclipseFolder);
-    context.setOption(InstallerContext.ECLIPSE_FOLDER, eclipseFolder.getAbsolutePath());
   }
   
   private String getZipName() {

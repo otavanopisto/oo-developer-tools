@@ -1,0 +1,443 @@
+package fi.otavanopisto.devtools.muikkuinstaller
+
+import java.lang.ProcessBuilder.Redirect;
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+
+import javax.crypto.interfaces.PBEKey;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.SystemUtils
+
+// CONFIGURATION
+def cliOptions() {
+  INSTALLER_EXECUTABLE = "java -jar muikku-devenv-installer.jar"
+
+  def cli = new CliBuilder(usage:INSTALLER_EXECUTABLE + " [options] basedir",
+  header: "Install Muikku development environment\n")
+  cli.e('install Eclipse')
+  cli.E('install required plugins for Eclipse')
+  cli.j('install JBoss AS')
+  cli.J('configure JBoss AS')
+  cli.D('drop and create MySQL/MariaDB database and user (requires mysql)')
+  cli.r('clone Muikku git repository (requires git)')
+  cli.a('install and configure all')
+  cli.h('print this message', longOpt: 'help')
+
+  def commandLine = []
+
+  if (System.getProperty("muikkudevenvinstaller.ask").equals("true")) {
+    println "Enter command line arguments:"
+    commandLine = readLine().split()
+  } else {
+    if (args.length == 0) {
+      cli.usage()
+      return false
+    }
+
+    commandLine = args
+  }
+
+  def opts = cli.parse(commandLine)
+
+  if (opts.h) {
+    cli.usage()
+    return false
+  }
+  
+  if (opts.a) {
+    INSTALL_ECLIPSE = true
+    CONFIGURE_ECLIPSE = true
+    INSTALL_JBOSS = true
+    CONFIGURE_JBOSS = true
+    CREATE_DATABASE = true
+    CLONE_REPOSITORY = true
+  } else {
+    INSTALL_ECLIPSE = opts.e
+    CONFIGURE_ECLIPSE = opts.E
+    INSTALL_JBOSS = opts.j
+    CONFIGURE_JBOSS = opts.J
+    CREATE_DATABASE = opts.D
+    CLONE_REPOSITORY = opts.r
+  }
+  
+  if (opts.arguments().size() > 0) {
+    BASEDIR = opts.arguments().get(0).replaceAll(DIR_SEPARATOR + /+$/, "")
+    BASEDIR = new File(BASEDIR).getAbsolutePath()
+  } else {
+    cli.usage()
+    return false
+  }
+
+  return true
+}
+
+def configure() {
+  if (SystemUtils.IS_OS_WINDOWS) {
+    ECLIPSE_URL      = "http://eclipse.mirror.triple-it.nl/technology/epp/" +
+        "downloads/release/kepler/SR1/eclipse-standard-kepler" +
+        "-SR1-win32-x86_64.zip"
+    ECLIPSE_FILENAME = "eclipse.zip"
+    ECLIPSE_DIRNAME  = "eclipse"
+    ECLIPSE_EXECUTABLE = "eclipsec.exe"
+    DIR_SEPARATOR = "\\"
+  } else if (SystemUtils.IS_OS_LINUX) {
+    ECLIPSE_URL      = "http://eclipse.mirror.triple-it.nl/technology/epp/" +
+        "downloads/release/kepler/SR1/eclipse-standard-kepler" +
+        "-SR1-linux-gtk-x86_64.tar.gz"
+    ECLIPSE_FILENAME = "eclipse.tar.gz"
+    ECLIPSE_DIRNAME  = "eclipse"
+    ECLIPSE_EXECUTABLE = "eclipse"
+    DIR_SEPARATOR = "/"
+  } else if (SystemUtils.IS_OS_MAC_OSX) {
+    ECLIPSE_URL      = "http://eclipse.mirror.triple-it.nl/technology/epp/" +
+        "downloads/release/kepler/SR1/eclipse-standard-kepler" +
+        "-SR1-macosx-cocoa-x86_64.tar.gz"
+    ECLIPSE_FILENAME = "eclipse.tar.gz"
+    ECLIPSE_DIRNAME  = "eclipse"
+    ECLIPSE_EXECUTABLE = "eclipse"
+    DIR_SEPARATOR = "/"
+  } else {
+    throw new SystemNotSupportedException()
+  }
+
+  ECLIPSE_PLUGIN_INSTALL_ARGS = """
+  -application org.eclipse.equinox.p2.director
+  -repository http://download.eclipse.org/releases/kepler/
+  -repository http://download.jboss.org/jbosstools/updates/stable/kepler
+  -repository http://download.jboss.org/jbosstools/targetplatforms/jbosstoolstarget/kepler/
+  -repository https://repository.sonatype.org/content/repositories/forge-sites/m2e-extras/0.15.0/N/0.15.0.201206251206/
+  -installIU org.jboss.tools.cdi.deltaspike.feature.feature.group
+  -installIU org.jboss.tools.cdi.feature.feature.group
+  -installIU org.eclipse.jpt.jpadiagrameditor.feature.feature.group
+  -installIU org.eclipse.jpt.jpa.feature.feature.group
+  -installIU org.hibernate.eclipse.feature.feature.group
+  -installIU org.jboss.tools.ws.jaxrs.feature.feature.group
+  -installIU org.jboss.tools.maven.cdi.feature.feature.group
+  -installIU org.jboss.tools.maven.jdt.feature.feature.group
+  -installIU org.jboss.tools.maven.hibernate.feature.feature.group
+  -installIU org.jboss.tools.maven.feature.feature.group
+  -installIU org.jboss.tools.runtime.core.feature.feature.group
+  -installIU org.jboss.tools.stacks.core.feature.feature.group
+  -installIU org.jboss.tools.openshift.egit.integration.feature.feature.group
+  -installIU org.jboss.tools.foundation.feature.feature.group
+  -installIU org.jboss.tools.foundation.security.linux.feature.feature.group
+  -installIU org.jboss.tools.jst.feature.feature.group
+  -installIU org.jboss.tools.common.jdt.feature.feature.group
+  -installIU org.jboss.tools.jsf.feature.feature.group
+  -installIU org.jboss.tools.livereload.feature.feature.group
+  -installIU org.jboss.tools.maven.jbosspackaging.feature.feature.group
+  -installIU org.jboss.tools.maven.sourcelookup.feature.feature.group
+  -installIU org.jboss.tools.ws.feature.feature.group
+  -installIU org.jboss.ide.eclipse.as.feature.feature.group
+  -installIU org.jboss.tools.jmx.feature.feature.group
+  -installIU org.sonatype.m2e.buildhelper.feature.feature.group
+  -installIU org.jboss.tools.maven.apt.feature.feature.group
+  -installIU org.jboss.tools.maven.profiles.feature.feature.group
+  """.replace('\n', ' ')
+  
+  DATABASE_CREATE_SCRIPT = """
+  create database muikku_db default charset utf8;
+  create user muikku_usr@localhost identified by '${-> dbPassword }';
+  grant all on muikku_db.* to muikku_usr@localhost;
+  """
+  
+  if (SystemUtils.IS_OS_WINDOWS) {
+   JBOSS_URL = "http://download.jboss.org/jbossas/7.1/jboss-as-7.1.1.Final/jboss-as-7.1.1.Final.zip"
+   JBOSS_FILENAME = "jboss.zip"
+   JBOSS_EXECUTABLE = "bin\\jboss-cli.bat" 
+   JBOSS_STANDALONE_EXECUTABLE = "bin\\standalone.bat"
+   JBOSS_ADDUSER_EXECUTABLE = "bin\\add-user.bat"
+  } else {
+   JBOSS_URL = "http://download.jboss.org/jbossas/7.1/jboss-as-7.1.1.Final/jboss-as-7.1.1.Final.tar.gz"
+   JBOSS_FILENAME = "jboss.tar.gz"
+   JBOSS_EXECUTABLE = "bin/jboss-cli.sh"
+   JBOSS_STANDALONE_EXECUTABLE = "bin/standalone.sh"
+   JBOSS_ADDUSER_EXECUTABLE = "bin/add-user.sh"
+  }
+  JBOSS_DIRNAME = "jboss-as-7.1.1.Final"
+  
+  JBOSS_CONFIGURE_SCRIPT = """
+  # Muikku CLI script
+  
+  connect
+  batch
+  
+  # System properties
+  
+  /system-property=muikku-plugin-libraries:add(value=${-> repository}/muikku-data/muikku-plugin-libraries.properties)
+  /system-property=muikku-plugin-repositories:add(value=${-> repository}/muikku-data/muikku-pluginrepositories.properties)
+  /system-property=muikku-data:add(value=${-> repository}/muikku-data/muikku-data.xml)
+  /system-property=muikku-deus-nex-machina-password:add(value=${-> dnmPassword})
+
+  # MySQL JDBC Driver 
+
+  /subsystem=datasources/jdbc-driver=mysql:add(driver-name="mysql",driver-module-name="com.mysql.jdbc",driver-xa-datasource-class-name="com.mysql.jdbc.jdbc2.optional.MysqlXADataSource")
+  
+  # Datasources
+  
+  data-source add --name=muikku --driver-name=mysql --driver-class=com.mysql.jdbc.Driver --connection-url=${-> connectionUrl} --jndi-name=java:/jdbc/muikku --user-name=${-> username} --password=${-> password} --use-ccm=false --jta=true --validate-on-match=false --background-validation=false --share-prepared-statements=false
+  data-source enable --name=muikku
+  data-source add --name=muikku-h2 --driver-name=h2 --driver-class=org.h2.Driver --connection-url=jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE --jndi-name=java:/jdbc/muikku-h2 --use-ccm=false --jta=false --use-java-context=true --min-pool-size=1 --max-pool-size=200 --check-valid-connection-sql="SELECT 1" --validate-on-match=true --background-validation=false --share-prepared-statements=false
+  
+  # Execute and shutdown
+  
+  run-batch
+  :shutdown
+  """
+  
+  return true
+}
+
+// UTILITY FUNCTIONS
+String readLine() {
+  def s = new Scanner(System.in);
+  return s.nextLine();
+}
+
+def download(address, fname) {
+  def file = new FileOutputStream(fname)
+  def out = new BufferedOutputStream(file)
+  out << new URL(address).openStream()
+  out.close()
+}
+
+def unzip(fname, dest) {
+  def result = new ZipInputStream(new FileInputStream(fname))
+  def destFile = new File(dest)
+  if(!destFile.exists()){
+    destFile.mkdir();
+  }
+  result.withStream{
+    def entry
+    while(entry = result.nextEntry){
+      if (!entry.isDirectory()){
+        new File(dest + File.separator + entry.name).parentFile?.mkdirs()
+        def output = new FileOutputStream(dest + File.separator
+            + entry.name)
+        output.withStream{
+          int len = 0;
+          byte[] buffer = new byte[4096]
+          while ((len = result.read(buffer)) > 0){
+            output.write(buffer, 0, len);
+          }
+        }
+      }
+      else {
+        new File(dest + File.separator + entry.name).mkdir()
+      }
+    }
+  }
+}
+
+def uncompress(fname, dest) throws SystemNotSupportedException {
+  if (fname =~ /.*\.tar\.gz/) {
+    ["tar", "-xzf", fname, "-C", dest].execute().waitFor()
+  } else if (fname =~ /.*\.zip/) {
+    unzip(fname, dest)
+  } else {
+    throw new SystemNotSupportedException()
+  }
+}
+
+def runProgram(List<String> argv, File dir=null) {
+  if (dir == null) {
+    dir = new File(BASEDIR)
+  }
+  ProcessBuilder pb = new ProcessBuilder(argv)
+  pb.redirectInput(Redirect.INHERIT)
+  pb.redirectOutput(Redirect.INHERIT)
+  pb.redirectError(Redirect.INHERIT)
+  pb.directory(dir)
+  Process process = pb.start()
+  process.waitFor()
+}
+
+def copyResourceToFile(String source, String target) {
+  this.getClass().getResource( source ).withInputStream { ris ->
+    new File( target ).withOutputStream { fos ->
+      fos << ris
+    }
+  }
+}
+
+def expect(Process proc, String regex) {
+  def br = new InputStreamReader(proc.inputStream)
+  def line
+  while ((line = br.readLine()) != null)
+  {
+    println line
+     if (line =~ regex) {
+       break
+     }
+  }
+}
+
+// MAIN SCRIPT
+try {
+  if (!configure()) {return}
+  if (!cliOptions()) {return}
+  
+  File basedirFile = new File(BASEDIR)
+  if (!basedirFile.exists()) {
+    basedirFile.mkdirs()
+  } else {
+    println "The given directory exists. Continue? (y/n)"
+    def c = readLine().charAt(0)
+    if (c != 'y' && c != 'Y') {
+      println "Aborting..."
+      return
+    }
+  }
+  
+  if (CLONE_REPOSITORY) {
+    
+  }
+
+  if (INSTALL_ECLIPSE) {
+    println "Downloading Eclipse..."
+    download(ECLIPSE_URL, BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME)
+    println "Uncompressing Eclipse..."
+    uncompress(BASEDIR + DIR_SEPARATOR + ECLIPSE_FILENAME,
+               BASEDIR)
+
+  }
+  if (CONFIGURE_ECLIPSE) {
+    println "Installing Eclipse plugins..."
+    def eclipse_exc_path = ""
+    if (INSTALL_ECLIPSE) {
+      eclipse_exc_path = BASEDIR +
+          DIR_SEPARATOR +
+          ECLIPSE_DIRNAME +
+          DIR_SEPARATOR +
+          ECLIPSE_EXECUTABLE
+    } else {
+      println "Please enter the path to Eclipse directory"
+      def path = readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
+      eclipse_exc_path = path + DIR_SEPARATOR + ECLIPSE_EXECUTABLE
+    }
+    def proc = (eclipse_exc_path + ECLIPSE_PLUGIN_INSTALL_ARGS).execute()
+    proc.in.eachLine { println it }
+  }
+  
+  dbPassword = null
+  if (CREATE_DATABASE) {
+    println "Please enter MySQL administrator username"
+    def adminUsername = readLine()
+    println "Please enter MySQL administrator password"
+    def adminPassword = readLine()
+    while (dbPassword == null) {
+      println "Please enter the password for Muikku database user"
+      def dbPass1 = readLine()
+      println "Enter the password again"
+      def dbPass2 = readLine()
+      if (dbPass1.equals(dbPass2)) { // Password matching in the future
+        dbPassword = dbPass1
+      } else {
+        println "The passwords didn't match"
+      }
+    }
+    ProcessBuilder pb = new ProcessBuilder('mysql',
+                         "-u${adminUsername}",
+                         "-p${adminPassword}")
+    pb.redirectError(Redirect.INHERIT)
+    Process mysqlProc = pb.start()
+    println DATABASE_CREATE_SCRIPT
+    mysqlProc.withWriter {
+      it.write(DATABASE_CREATE_SCRIPT)
+    }
+    mysqlProc.in.eachLine {println it}
+    mysqlProc.waitFor()  
+  }
+  
+  if (CLONE_REPOSITORY) {
+    File dir = new File(BASEDIR)
+    runProgram(['git', 'clone', 'https://github.com/otavanopisto/muikku.git'], dir)
+    dir = new File(BASEDIR + DIR_SEPARATOR + "muikku")
+    runProgram(['git', 'checkout', '--track', 'origin/devel'], dir)
+  }
+  
+  if (INSTALL_JBOSS) {
+    println "Installing JBoss AS..."
+    download(JBOSS_URL, BASEDIR + DIR_SEPARATOR + JBOSS_FILENAME)
+    println "Uncompressing JBoss AS..."
+    uncompress(BASEDIR + DIR_SEPARATOR + JBOSS_FILENAME, BASEDIR)
+  }
+  
+  if (CONFIGURE_JBOSS) {
+    println "Configuring JBoss AS..."
+    def jboss_path = ""
+    if (INSTALL_JBOSS) {
+      jboss_path = (BASEDIR +
+        DIR_SEPARATOR +
+        JBOSS_DIRNAME +
+        DIR_SEPARATOR)
+    } else {
+      println "Please enter the path to JBoss directory"
+      jboss_path = (readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
+                    + DIR_SEPARATOR)
+    }
+    File tmpFile = File.createTempFile("temp", "cli");
+    tmpFile.deleteOnExit()
+    if (CLONE_REPOSITORY) {
+      repository = BASEDIR + DIR_SEPARATOR + "muikku"
+    } else {
+      println "Please enter the absolute path to the root of Muikku Git repository"
+      repository = readLine().replaceAll(DIR_SEPARATOR + /+$/, "")
+    }
+    println "Please enter the Deus Nex Machina password (optional)"
+    dnmPassword = readLine()
+    if (CREATE_DATABASE) {
+      connectionUrl = "jdbc:mysql://localhost:3306/muikku_db"
+      username = "muikku_usr"
+      password = dbPassword
+    } else {
+      println "Please enter the database connection URL"
+      connectionUrl = readLine()
+      println "Please enter the database username"
+      username = readLine()
+      println "Please enter the database password"
+      password = readLine()
+    }
+    tmpFile.write(JBOSS_CONFIGURE_SCRIPT.toString().replace(/^\s+/, ""))
+    println "Installing MySQL driver..."
+    new File(jboss_path +
+      "modules" + DIR_SEPARATOR +
+      "com" + DIR_SEPARATOR +
+      "mysql" + DIR_SEPARATOR +
+      "jdbc" + DIR_SEPARATOR +
+      "main" + DIR_SEPARATOR).mkdirs()
+    copyResourceToFile("/resources/module.xml", jboss_path +
+      "modules" + DIR_SEPARATOR +
+      "com" + DIR_SEPARATOR +
+      "mysql" + DIR_SEPARATOR +
+      "jdbc" + DIR_SEPARATOR +
+      "main" + DIR_SEPARATOR +
+      "module.xml")
+    copyResourceToFile("/resources/mysql-connector-java-5.1.18-bin.jar", jboss_path +
+      "modules" + DIR_SEPARATOR +
+      "com" + DIR_SEPARATOR +
+      "mysql" + DIR_SEPARATOR +
+      "jdbc" + DIR_SEPARATOR +
+      "main" + DIR_SEPARATOR +
+      "mysql-connector-java-5.1.18-bin.jar")
+    println "Starting JBoss AS..."
+    ProcessBuilder standalonePb = new ProcessBuilder(jboss_path +
+      JBOSS_STANDALONE_EXECUTABLE)
+    standalonePb.environment().put("NOPAUSE", "true")
+    def standaloneProc = standalonePb.start()
+    // Wait for JBoss to start
+    expect(standaloneProc, /JBoss.*started/)
+    println "Executing config commands..."
+    ProcessBuilder cliPb = new ProcessBuilder(jboss_path +
+      JBOSS_EXECUTABLE, "--file=${tmpFile.getAbsolutePath()}")
+    cliPb.environment().put("NOPAUSE", "true")
+    Process cliProc = cliPb.start()
+    expect(cliProc, /=>/)
+    cliProc.waitForOrKill(5000)
+    standaloneProc.waitForOrKill(5000)
+  }
+  println "Done."
+} catch (SystemNotSupportedException ex) {
+  println "Your system is not supported."
+}

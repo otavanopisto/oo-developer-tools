@@ -11,11 +11,16 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui,
  org.eclipse.ui.ide,
  org.eclipse.jdt.ui,
- org.eclipse.m2e.core;bundle-version="[1.4.0,1.9.0)",
- org.eclipse.m2e.core.ui;bundle-version="[1.4.0,1.9.0)",
- org.eclipse.m2e.maven.runtime;bundle-version="[1.4.0,1.9.0)",
- org.jboss.tools.maven.apt.core;bundle-version="[1.0.1,1.9.0)",
- org.jboss.tools.maven.apt.ui;bundle-version="[1.0.1,1.9.0)"
+ org.eclipse.m2e.core,
+ org.eclipse.m2e.core.ui,
+ org.eclipse.m2e.maven.runtime,
+ org.jboss.tools.maven.apt.core,
+ org.jboss.tools.maven.apt.ui,
+ org.eclipse.wst.server.core,
+ org.jboss.tools.cdi.core,
+ org.hibernate.eclipse.console,
+ org.slf4j.api,
+ org.eclipse.debug.core
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Import-Package: org.eclipse.core.resources
