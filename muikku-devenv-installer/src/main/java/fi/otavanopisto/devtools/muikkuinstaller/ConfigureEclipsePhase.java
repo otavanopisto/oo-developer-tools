@@ -35,17 +35,22 @@ public class ConfigureEclipsePhase extends AbstractEclipseConfigurationPhase {
   private void importPreferences(InstallerContext context, File eclipseFolder, File eclipseExecutable, File eclipseWorkspaceFolder) throws IOException, InterruptedException, URISyntaxException {
     String taskId = startTask("Import Preferences");
     try {
-      String preferencesFile = new File(getClass().getResource("/resources/preferences.epf").toURI()).getAbsolutePath();
-      
-      List<String> arguments = new ArrayList<String>();
-      arguments.add("-nosplash");
-      arguments.add("-application");
-      arguments.add("yellow-sheep-project.yellow-sheep-project");
-      arguments.add("-data");
-      arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
-      arguments.add("-import-preferences");
-      arguments.add(preferencesFile);
-      runEclipse(context, eclipseFolder, eclipseExecutable, arguments);  
+      File preferencesTemp = File.createTempFile("preferences", ".epf");
+      try {
+        copyResourceToFile("preferences.epf", preferencesTemp);
+        String preferencesFile = preferencesTemp.getAbsolutePath();
+        List<String> arguments = new ArrayList<String>();
+        arguments.add("-nosplash");
+        arguments.add("-application");
+        arguments.add("yellow-sheep-project.yellow-sheep-project");
+        arguments.add("-data");
+        arguments.add(eclipseWorkspaceFolder.getAbsolutePath());
+        arguments.add("-import-preferences");
+        arguments.add(preferencesFile);
+        runEclipse(context, eclipseFolder, eclipseExecutable, arguments);  
+      } finally {
+        preferencesTemp.delete();
+      }
     } finally {
       endTask(taskId);
     }

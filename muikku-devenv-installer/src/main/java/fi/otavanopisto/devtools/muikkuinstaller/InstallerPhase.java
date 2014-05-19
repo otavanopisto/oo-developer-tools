@@ -8,7 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.ProcessBuilder.Redirect;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -185,9 +184,6 @@ public abstract class InstallerPhase {
   
   protected int runCommand(File workDirectory, String... argv) throws IOException, InterruptedException {
     ProcessBuilder processBuilder = new ProcessBuilder(argv);
-    processBuilder.redirectInput(Redirect.INHERIT);
-    processBuilder.redirectOutput(Redirect.INHERIT);
-    processBuilder.redirectError(Redirect.INHERIT);
     if (workDirectory != null) {
       processBuilder.directory(workDirectory);
     }
@@ -208,7 +204,15 @@ public abstract class InstallerPhase {
   }
 
   protected void copyResourceToFile(String resource, File file) throws IOException {
-    InputStream resourceStream = this.getClass().getResourceAsStream("/resources/" + resource);
+    InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(resource);
+    if (resourceStream == null) {
+      resourceStream = getClass().getClassLoader().getResourceAsStream("/resources/" + resource);
+    }
+    
+    if (resourceStream == null) {
+      System.err.println("cannot find resource: " + resource);
+    }
+    
     try {
       file.getParentFile().mkdirs();
       
