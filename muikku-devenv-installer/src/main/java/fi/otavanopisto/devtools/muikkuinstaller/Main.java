@@ -47,6 +47,7 @@ public class Main {
         phases.add(new InstallEclipsePhase());
         phases.add(new InstallEclipsePluginsPhase());
         phases.add(new ConfigureEclipsePhase());
+        phases.add(new ConfigureJBossPhase());
         phases.add(new CloneGitRepositoryPhase());
         phases.add(new ImportEclipseProjectsPhase());
       } else {
@@ -66,7 +67,7 @@ public class Main {
           phases.add(new ConfigureEclipsePhase());
         }
         if (cmd.hasOption('J')) {
-          throw new UnsupportedOperationException("Not supported yet");
+          phases.add(new ConfigureJBossPhase());
         }
         if (cmd.hasOption('r')) {
           phases.add(new CloneGitRepositoryPhase());
