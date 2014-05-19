@@ -33,8 +33,8 @@
 			<version>1.8</version>
 		</dependency>
 	</dependencies>
-	
-	
+
+
 
 
 	<build>
@@ -42,8 +42,8 @@
 			<resource>
 				<directory>src/main</directory>
 				<excludes>
-				    <exclude>**/*.java</exclude>
-				    <exclude>**/*.groovy</exclude>
+					<exclude>**/*.java</exclude>
+					<exclude>**/*.groovy</exclude>
 				</excludes>
 			</resource>
 		</resources>
@@ -74,7 +74,7 @@
 					<archive>
 						<manifest>
 							<addClasspath>true</addClasspath>
-							<mainClass>fi.otavanopisto.devtools.muikkuinstaller.MuikkuInstaller</mainClass>
+							<mainClass>fi.otavanopisto.devtools.muikkuinstaller.Main</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>
@@ -99,8 +99,9 @@
 						<phase>package</phase>
 						<configuration>
 							<tasks>
-								<copy file="${basedir}/target/${project.artifactId}-${project.version}-jar-with-dependencies.jar"
-								      tofile="${basedir}/../dist/muikku-devenv-installer.jar" />
+								<copy
+									file="${basedir}/target/${project.artifactId}-${project.version}-jar-with-dependencies.jar"
+									tofile="${basedir}/../dist/muikku-devenv-installer.jar" />
 							</tasks>
 						</configuration>
 						<goals>
