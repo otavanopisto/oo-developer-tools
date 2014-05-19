@@ -25,15 +25,14 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.IPreferencesService;
+import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.m2e.core.MavenPlugin;
 import org.eclipse.m2e.core.project.MavenProjectInfo;
 import org.eclipse.m2e.core.project.MavenUpdateRequest;
 import org.eclipse.m2e.core.project.ProjectImportConfiguration;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.internal.Perspective;
-import org.eclipse.ui.internal.PerspectiveSwitcher;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IRuntime;
 import org.eclipse.wst.server.core.IRuntimeType;
@@ -94,6 +93,9 @@ public class Application implements IApplication {
       case "import-jbossas71-project":
         importJBossAs71Project(options.get("import-project"));
       break;
+      case "add-jbossas71-vmargs":
+        addJBossAs71VMArgs(options.get("vmargs"));
+      break;
       case "update-projects":
         updateMavenProjects(options.get("update-projects"));
       break;
@@ -105,7 +107,7 @@ public class Application implements IApplication {
     System.out.println("Waiting for background processes to end...");
     waitForBackingJobs();
     System.out.println("Yellow Sheep Project Stopping...");
-    
+  
     return EXIT_OK;
   }
 
@@ -121,6 +123,7 @@ public class Application implements IApplication {
   }
   
   protected void importJBossAs71Project(String projectName) {
+    
     IServer server = findServerByTypeId("org.jboss.ide.eclipse.as.71");
 
     IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
@@ -141,6 +144,25 @@ public class Application implements IApplication {
     } else {
       System.out.println("Could not find project: " + projectName);
     }
+  }
+  
+  private void addJBossAs71VMArgs(String vmargs) throws CoreException {
+    IServer server = findServerByTypeId("org.jboss.ide.eclipse.as.71");
+    ILaunchConfiguration launchConfiguration = server.getLaunchConfiguration(true, null);
+    @SuppressWarnings("rawtypes")
+    Map attributes = launchConfiguration.getAttributes();
+    String vmArgs = (String) attributes.get("org.eclipse.jdt.launching.VM_ARGUMENTS");
+
+    if (StringUtils.isNotBlank(vmargs)) {
+      String[] args = vmargs.split(",");
+      for (String arg : args) {
+        vmArgs = StringUtils.trim(vmArgs) + " " + arg;
+      }
+    }
+    
+    ILaunchConfigurationWorkingCopy launchConfigurationWorkingCopy = launchConfiguration.getWorkingCopy();
+    launchConfigurationWorkingCopy.setAttribute("org.eclipse.jdt.launching.VM_ARGUMENTS", vmArgs);
+    launchConfigurationWorkingCopy.doSave();
   }
   
   private IServer findServerByTypeId(String typeId) {
@@ -248,6 +270,10 @@ public class Application implements IApplication {
       } else if ("-import-preferences".equals(commandLineArgs[i])) {
         options.put("preferences-file", commandLineArgs[i + 1]);
         options.put("action", "import-preferences");
+        i++;
+      } else if ("-add-jbossas71-vmargs".equals(commandLineArgs[i])) {
+        options.put("vmargs", commandLineArgs[i + 1]);
+        options.put("action", "add-jbossas71-vmargs");
         i++;
       }
 
