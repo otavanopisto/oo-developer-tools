@@ -38,10 +38,10 @@ public abstract class InstallerPhase {
   public abstract String getName();
   
   protected String startTask(String task) {
-    System.out.print("> " + task);
+    System.out.print("> " + task + ".");
     
     String id = UUID.randomUUID().toString();
-    DotThread dotThread = new DotThread(task.length());
+    DotThread dotThread = new DotThread(task.length() + 1);
     
     dotTasks.put(id, dotThread);
     dotThread.start();
@@ -248,6 +248,8 @@ public abstract class InstallerPhase {
   protected void copyResourceToFile(String resource, File file) throws IOException {
     InputStream resourceStream = this.getClass().getResourceAsStream("/resources/" + resource);
     try {
+      file.getParentFile().mkdirs();
+      
       if (!file.exists()) {
         file.createNewFile();
       }
