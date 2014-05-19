@@ -138,11 +138,11 @@ def configure() {
 
   DATABASE_CREATE_SCRIPT = """
   drop database if exists pyramus_db;
-  grant usage on *.* to pyramus_usr@localhost;
-  drop user pyramus_usr@localhost;
+  grant usage on *.* to '${-> username }'@localhost;
+  drop user '${-> username }'@localhost;
   create database pyramus_db default charset utf8;
-  create user pyramus_usr@localhost identified by '${-> dbPassword }';
-  grant all on pyramus_db.* to pyramus_usr@localhost;
+  create user '${-> username }'@localhost identified by '${-> password }';
+  grant all on pyramus_db.* to '${-> username }'@localhost;
   """
   
   if (SystemUtils.IS_OS_WINDOWS) {
@@ -169,6 +169,7 @@ def configure() {
   # System properties
   
   /system-property=PyramusWSAllowedIPs:add(value="127.0.0.1")
+  /system-property=pyramus-url:add(value="https://${-> hostname}:8443")
   
   # MySQL JDBC Driver 
 
@@ -297,8 +298,6 @@ def expect(Process proc, String regex) {
 
 
 try {
-  String hostname = null
-  
   Logger.getRootLogger().setLevel(Level.DEBUG);
   
   if (!configure()) {return}
@@ -319,7 +318,42 @@ try {
     }
   }
 
-  dbPassword = null
+  if (CREATE_DATABASE || UPDATE_DATABASE || CONFIGURE_JBOSS) {
+    if (!DATABASE_URL) {
+      println "Please enter the database connection URL (leave blank for jdbc:mysql://localhost:3306/pyramus_db)"
+      connectionUrl = readLine()
+      if (!connectionUrl) {
+        connectionUrl = "jdbc:mysql://localhost:3306/pyramus_db";
+      }
+    } else {
+      connectionUrl = DATABASE_URL
+    }
+      
+    if (!DATABASE_USER) {
+      println "Please enter the database username (leave blank for pyramus_usr)"
+      username = readLine()
+      if (!username) {
+        username = "pyramus_usr";
+      }
+    } else {
+      username = DATABASE_USER
+    }
+      
+    if (!DATABASE_PASSWORD) {
+      println "Please enter the database password"
+      password = readLine()
+    } else {
+      password = DATABASE_PASSWORD
+    }
+  }
+  
+  if (!PYRAMUS_HOSTNAME) {
+    println "Please enter Pyramus hostname (e.g. pyramus.example.net)"
+    hostname = readLine()
+  } else {
+    hostname = PYRAMUS_HOSTNAME
+  }
+
   if (CREATE_DATABASE) {
     
     adminUsername = null
@@ -338,18 +372,7 @@ try {
     } else {
       adminPassword = DATABASE_ADMIN_PASSWORD
     }
-    
-    while (dbPassword == null) {
-      println "Please enter the password for Pyramus database user"
-      def dbPass1 = readLine()
-      println "Enter the password again"
-      def dbPass2 = readLine()
-      if (dbPass1.equals(dbPass2)) { // Password matching in the future
-        dbPassword = dbPass1
-      } else {
-        println "The passwords didn't match"
-      }
-    }
+
     ProcessBuilder pb = new ProcessBuilder('mysql',
                          "-u${adminUsername}",
                          "-p${adminPassword}")
@@ -361,44 +384,6 @@ try {
     }
     mysqlProc.in.eachLine {println it}
     mysqlProc.waitFor()  
-  }
-  
-  if (UPDATE_DATABASE || CONFIGURE_JBOSS) {
-    if (CREATE_DATABASE) {
-      connectionUrl = "jdbc:mysql://localhost:3306/pyramus_db"
-      username = "pyramus_usr"
-      password = dbPassword
-    } else {
-      if (DATABASE_URL == null) {
-        println "Please enter the database connection URL"
-        connectionUrl = readLine()
-      } else {
-        connectionUrl = DATABASE_URL
-      }
-      
-      if (DATABASE_USER == null) {
-        println "Please enter the database username"
-        username = readLine()
-      } else {
-        username = DATABASE_USER
-      }
-      
-      if (DATABASE_PASSWORD == null) {
-        println "Please enter the database password"
-        password = readLine()
-      } else {
-        password = DATABASE_PASSWORD
-      }
-    }
-  }
-  
-  if (SELF_SIGNED_CERT || INSTALL_PYRAMUS) {
-    if (!PYRAMUS_HOSTNAME) {
-      println "Please enter Pyramus hostname"
-      hostname = readLine()
-    } else {
-      hostname = PYRAMUS_HOSTNAME
-    }
   }
 
   if (UPDATE_DATABASE) {
@@ -573,7 +558,7 @@ try {
     
     println "### Installation complete ###"
     println "Next you need to start you JBoss server by executing ${-> jboss_path + JBOSS_STANDALONE_EXECUTABLE} and navigate"
-    println "Into https://${-> hostname}:8443/system/setupwizard/index.page with your webbrowser and follow the instructions on the screen"
+    println "Into https://${-> hostname}:8443 with your web browser and follow the instructions on the screen"
   }
 
   println "Done."
