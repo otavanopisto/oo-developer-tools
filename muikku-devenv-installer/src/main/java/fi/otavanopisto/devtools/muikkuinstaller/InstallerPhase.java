@@ -10,27 +10,18 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.URL;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 
 public abstract class InstallerPhase {
   
@@ -170,14 +161,9 @@ public abstract class InstallerPhase {
  
       ArchiveEntry entry;
       while ((entry = archiveInputStream.getNextEntry()) != null) {
-        TarArchiveEntry tarArchiveEntry = entry instanceof TarArchiveEntry ? (TarArchiveEntry) entry : null;
-        
         File file = new File(destFolder, entry.getName());
         if (entry.isDirectory()) {
           file.mkdirs();
-        } else if (tarArchiveEntry != null && tarArchiveEntry.isSymbolicLink()) {
-          Path link = FileSystems.getDefault().getPath(tarArchiveEntry.getLinkName());
-          Files.createSymbolicLink(file.toPath(), link);
         } else {
           if (file.createNewFile()) {
             FileOutputStream fileOutputStream = new FileOutputStream(file);
@@ -191,35 +177,12 @@ public abstract class InstallerPhase {
             System.err.println("Could not create new file '" + file.getAbsolutePath() + "'");
           }
         }
-        
-        if (tarArchiveEntry != null && !tarArchiveEntry.isSymbolicLink()) {
-          int mode = tarArchiveEntry.getMode();
-          Set<PosixFilePermission> permissions = unixModeToPosixPermissions(mode);
-          FileAttribute<Set<PosixFilePermission>> fileAttribute = PosixFilePermissions.asFileAttribute(permissions);
-          Files.setPosixFilePermissions(file.toPath(), fileAttribute.value());      
-        }
       }
     } finally {
       bufferedInputStream.close();
     }
   }
   
-  protected static Set<PosixFilePermission> unixModeToPosixPermissions(int mode) {
-    // This method is uses slightly modified code from (Apache License 2.0)
-    // https://github.com/ksclarke/cmake-maven-project/blob/master/cmake-binaries-plugin/src/main/java/com/googlecode/cmakemavenproject/GetBinariesMojo.java
-    StringBuilder result = new StringBuilder();
-    
-    for (int i = 2; i >= 0; i--) {
-      mode %= Math.pow(8, i);
-      int digit = (int) (mode / Math.pow(8, i - 1));
-      result.append((digit & 4) != 0 ? 'r' : '-');
-      result.append((digit & 2) != 0 ? 'w' : '-');
-      result.append((digit & 1) != 0 ? 'x' : '-');
-    }
-    
-    return PosixFilePermissions.fromString(result.toString());
-  }
-
   protected int runCommand(File workDirectory, String... argv) throws IOException, InterruptedException {
     ProcessBuilder processBuilder = new ProcessBuilder(argv);
     processBuilder.redirectInput(Redirect.INHERIT);
