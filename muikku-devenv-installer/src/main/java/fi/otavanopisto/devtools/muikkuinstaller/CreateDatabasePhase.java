@@ -26,20 +26,25 @@ public class CreateDatabasePhase extends InstallerPhase {
       String password = getMySQLPassword(context);
       String database = getMySQLDatabase(context);
       
-      String sql = String.format(CREATE_SQL, database, user, password, database, user); 
-      
-      ProcessBuilder processBuilder = new ProcessBuilder("mysql", "-u" + adminUsername, "-p" + adminPassword);
-      Process process = processBuilder.start();
-      
-      OutputStream outputStream = process.getOutputStream();
+      String taskId = startTask("Create database");
       try {
-        IOUtils.write(sql, outputStream);
+        String sql = String.format(CREATE_SQL, database, user, password, database, user); 
+        
+        ProcessBuilder processBuilder = new ProcessBuilder("mysql", "-u" + adminUsername, "-p" + adminPassword);
+        Process process = processBuilder.start();
+        
+        OutputStream outputStream = process.getOutputStream();
+        try {
+          IOUtils.write(sql, outputStream);
+        } finally {
+          outputStream.flush();
+          outputStream.close();
+        }
+        
+        process.waitFor();
       } finally {
-        outputStream.flush();
-        outputStream.close();
+        endTask(taskId);
       }
-      
-      process.waitFor();
     } else {
       System.out.println("Could not find MySQL executable");
     }
