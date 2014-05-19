@@ -8,6 +8,7 @@ public class Main {
     try {
       executePhases(
         new AssignOptionsPhase(),
+        new CreateDatabasePhase(),
         new InstallJBossPhase(),
         new InstallEclipsePhase(),
         new InstallEclipsePluginsPhase(),
