@@ -23,6 +23,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.jobs.IJobManager;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.IPreferencesService;
 import org.eclipse.debug.core.ILaunchConfiguration;
@@ -52,7 +53,6 @@ public class Application implements IApplication {
   public Object start(IApplicationContext context) throws Exception {
     Map<String, String> options = parseOptions();
     String projectNameTemplate = "[groupId].[artifactId]";
-
     System.out.println("Yellow Sheep Project Started...");
 
     switch (options.get("action")) {
@@ -67,7 +67,7 @@ public class Application implements IApplication {
           
           List<File> pomFiles = new ArrayList<>();
           for (String pomFileName : pomFileNames) {
-            File pomFile = new File(pomFileName);
+            File pomFile = new File(StringUtils.trim(pomFileName));
             if (pomFile.exists()) {
               if (pomFile.isDirectory()) {
                 pomFile = new File(pomFile, "pom.xml");
@@ -364,8 +364,24 @@ public class Application implements IApplication {
   }
 
   private void waitForBackingJobs() throws InterruptedException {
-    while (!Job.getJobManager().isIdle() && (Job.getJobManager().currentJob() != null)) {
+    long timeout = System.currentTimeMillis() + (60 * 1000 * 5);
+    
+    IJobManager jobManager = Job.getJobManager();
+    
+    while (!jobManager.isIdle()) {
+      System.out.println("Waiting for jobs...");
+      
+      if (jobManager.isSuspended()) {
+        System.out.println("Job manager is suspended, resuming...");
+        jobManager.resume();
+      }
+      
       TimeUnit.SECONDS.sleep(10);
+      
+      if (System.currentTimeMillis() > timeout) {
+        System.out.println("Timeout when waiting, termininating");
+        return;
+      }
     }
   }
   
