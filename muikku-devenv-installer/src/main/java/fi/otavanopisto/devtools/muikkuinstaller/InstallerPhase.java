@@ -102,12 +102,17 @@ public abstract class InstallerPhase {
       targetFile.createNewFile();
     }
 
-    FileOutputStream fileOutputStream = new FileOutputStream(targetFile);
     try {
-      download(fileOutputStream, address);
-    } finally {
-      fileOutputStream.flush();
-      fileOutputStream.close();
+      FileOutputStream fileOutputStream = new FileOutputStream(targetFile);
+      try {
+        download(fileOutputStream, address);
+      } finally {
+        fileOutputStream.flush();
+        fileOutputStream.close();
+      }
+    } catch (Exception e) {
+      targetFile.delete();
+      throw new IOException(e);
     }
   }
 
