@@ -48,9 +48,17 @@ public class InstallEclipsePhase extends InstallerPhase {
         eclipseFolder.delete();
       }
       
-      eclipseFolder.mkdirs();
       
-      tmpEclipseFolder.renameTo(eclipseFolder);
+      if (SystemUtils.IS_OS_LINUX) {
+        // renameTo doesn't move files properly
+        ProcessBuilder pb = new ProcessBuilder("mv",
+                                               tmpEclipseFolder.getAbsolutePath(),
+                                               eclipseFolder.getAbsolutePath());
+        pb.start().waitFor();
+      } else {
+        eclipseFolder.mkdirs();
+        tmpEclipseFolder.renameTo(eclipseFolder);
+      }
       context.setOption(InstallerContext.ECLIPSE_FOLDER, eclipseFolder.getAbsolutePath());
     } finally {
       endTask(taskId);
