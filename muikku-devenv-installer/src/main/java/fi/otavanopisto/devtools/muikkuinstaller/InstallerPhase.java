@@ -96,8 +96,8 @@ public abstract class InstallerPhase {
 
   protected void enquireForFolderOption(String option) {
     enquireForOption(option);
+    
   }
-
   protected void download(OutputStream outputStream, String address) throws IOException {
     URL url = new URL(address);
     InputStream inputStream = url.openStream();
@@ -138,7 +138,7 @@ public abstract class InstallerPhase {
     
     if (zipFile.getName().endsWith(".tar.gz")) {
       try {
-        runCommand(destFolder, "tar", "-xf", zipFile.getAbsolutePath());
+        runCommand(destFolder, "tar", "-xzf", zipFile.getAbsolutePath());
       } catch (InterruptedException e) {
        throw new IOException(e);
       }

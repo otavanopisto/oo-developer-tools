@@ -436,7 +436,7 @@ try {
   
   if (SELF_SIGNED_CERT) {
     println "Generating self-signed sertificate..."
-    keystoreFile = jboss_path + '/standalone/configuration/pyramus.keystore';
+    keystoreFile = "$jboss_path/standalone/configuration/pyramus.keystore";
     new File(keystoreFile).delete();
     keyAlias = "pyramus";
     keyPassword = "pyramus";
