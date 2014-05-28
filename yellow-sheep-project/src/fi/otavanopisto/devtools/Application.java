@@ -14,17 +14,20 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.codehaus.plexus.util.StringUtils;
+import org.eclipse.core.internal.jobs.JobManager;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.jobs.IJobChangeEvent;
 import org.eclipse.core.runtime.jobs.IJobManager;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.core.runtime.jobs.JobChangeAdapter;
 import org.eclipse.core.runtime.preferences.IPreferencesService;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
@@ -47,67 +50,72 @@ import org.jboss.tools.maven.apt.MavenJdtAptPlugin;
 import org.jboss.tools.maven.apt.preferences.AnnotationProcessingMode;
 import org.jboss.tools.maven.apt.preferences.IPreferencesManager;
 
+@SuppressWarnings("restriction")
 public class Application implements IApplication {
 
   @Override
   public Object start(IApplicationContext context) throws Exception {
-    Map<String, String> options = parseOptions();
-    String projectNameTemplate = "[groupId].[artifactId]";
-    System.out.println("Yellow Sheep Project Started...");
-
-    switch (options.get("action")) {
-      case "annotation-processing-mode":
-        String mode = options.get("annotation-processing-mode");
-        selectAnnotationProcessingMode(mode);
-        System.out.println("Set Maven Annotation Processing Mode into " + mode);
-      break;
-      case "import-poms":
-        if (StringUtils.isNotBlank(options.get("import-poms"))) {
-          String[] pomFileNames = options.get("import-poms").split(",");
-          
-          List<File> pomFiles = new ArrayList<>();
-          for (String pomFileName : pomFileNames) {
-            File pomFile = new File(StringUtils.trim(pomFileName));
-            if (pomFile.exists()) {
-              if (pomFile.isDirectory()) {
-                pomFile = new File(pomFile, "pom.xml");
-              }
-              
+    try {
+      Map<String, String> options = parseOptions();
+      String projectNameTemplate = "[groupId].[artifactId]";
+      System.out.println("Yellow Sheep Project Started...");
+  
+      switch (options.get("action")) {
+        case "annotation-processing-mode":
+          String mode = options.get("annotation-processing-mode");
+          selectAnnotationProcessingMode(mode);
+          System.out.println("Set Maven Annotation Processing Mode into " + mode);
+        break;
+        case "import-poms":
+          if (StringUtils.isNotBlank(options.get("import-poms"))) {
+            String[] pomFileNames = options.get("import-poms").split(",");
+            
+            List<File> pomFiles = new ArrayList<>();
+            for (String pomFileName : pomFileNames) {
+              File pomFile = new File(StringUtils.trim(pomFileName));
               if (pomFile.exists()) {
-                pomFiles.add(pomFile);                
+                if (pomFile.isDirectory()) {
+                  pomFile = new File(pomFile, "pom.xml");
+                }
+                
+                if (pomFile.exists()) {
+                  pomFiles.add(pomFile);                
+                } else {
+                  throw new IOException("File not found: " + pomFileName);
+                }
               } else {
                 throw new IOException("File not found: " + pomFileName);
               }
-            } else {
-              throw new IOException("File not found: " + pomFileName);
             }
+            
+            importPomFiles(projectNameTemplate, pomFiles);
+            System.out.println("Projects imported");
           }
-          
-          importPomFiles(projectNameTemplate, pomFiles);
-          System.out.println("Projects imported");
-        }
-      break;
-      case "configure-jbossas71":
-        configureJBossAs71(options.get("server-path"));
-      break;      
-      case "import-jbossas71-project":
-        importJBossAs71Project(options.get("import-project"));
-      break;
-      case "add-jbossas71-vmargs":
-        addJBossAs71VMArgs(options.get("vmargs"));
-      break;
-      case "update-projects":
-        updateMavenProjects(options.get("update-projects"));
-      break;
-      case "import-preferences":
-        importPreferences(options.get("preferences-file"));
-      break;
-    }
-
-    System.out.println("Waiting for background processes to end...");
-    waitForBackingJobs();
-    System.out.println("Yellow Sheep Project Stopping...");
+        break;
+        case "configure-jbossas71":
+          configureJBossAs71(options.get("server-path"));
+        break;      
+        case "import-jbossas71-project":
+          importJBossAs71Project(options.get("import-project"));
+        break;
+        case "add-jbossas71-vmargs":
+          addJBossAs71VMArgs(options.get("vmargs"));
+        break;
+        case "update-projects":
+          updateMavenProjects(options.get("update-projects"));
+        break;
+        case "import-preferences":
+          importPreferences(options.get("preferences-file"));
+        break;
+      }
   
+      terminateJobs();
+      System.out.println("Yellow Sheep Project Stopping...");
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    
     return EXIT_OK;
   }
 
@@ -283,7 +291,7 @@ public class Application implements IApplication {
     return options;
   }
   
-  private void updateMavenProjects(String projectNames) throws CoreException, InterruptedException{
+  private void updateMavenProjects(String projectNames) {
     if (StringUtils.isNotBlank(projectNames)) {
       List<IProject> projects = new ArrayList<>();
       IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
@@ -292,16 +300,26 @@ public class Application implements IApplication {
         projects.add(workspaceRoot.getProject(projectName));
       }
       
-      for (IProject project : projects) {
-        MavenUpdateRequest req = new MavenUpdateRequest(project, false, false);
-        MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(req, new ConsoleProgressMonitor());
+      IProgressMonitor updateGroup = Job.getJobManager().createProgressGroup();
+      try {
+        for (IProject project : projects) {
+          try {
+            MavenUpdateRequest req = new MavenUpdateRequest(project, false, false);
+            MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(req, updateGroup);   
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
+        }
+      } finally {
+        updateGroup.done();
       }
       
-      waitForBackingJobs();
-      
-      for (IProject project : projects) {
-        project.build(IncrementalProjectBuilder.FULL_BUILD, new ConsoleProgressMonitor());
-      }      
+      System.out.println("Waiting for background processes to end...");
+      try {
+        waitForBackingJobs(60 * 1000 * 15);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
   }
 
@@ -315,8 +333,6 @@ public class Application implements IApplication {
       MavenProjectInfo projectInfo = new MavenProjectInfo(pomFile.getParentFile().getName(), pomFile, null, null);
       projectInfos.add(projectInfo);
     }
-    
-    waitForBackingJobs();
     
     try {
       MavenPlugin.getProjectConfigurationManager().importProjects(projectInfos, configuration, new ConsoleProgressMonitor());
@@ -363,24 +379,40 @@ public class Application implements IApplication {
     return Collections.unmodifiableList(result);
   }
 
-  private void waitForBackingJobs() throws InterruptedException {
-    long timeout = System.currentTimeMillis() + (60 * 1000 * 5);
+  private void terminateJobs() {
+    try {
+      System.out.println("Terminating jobs...");
+      JobManager.shutdown();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+  
+  private void waitForBackingJobs(int timeoutMs) throws InterruptedException {
+    long timeout = System.currentTimeMillis() + timeoutMs;
     
     IJobManager jobManager = Job.getJobManager();
+    jobManager.addJobChangeListener(new JobChangeAdapter() {
+      @Override
+      public void aboutToRun(IJobChangeEvent event) {
+        if (event.getJob().getClass().getSimpleName().equals("PollingMonitor")) {
+          event.getJob().cancel();
+        }
+      }
+    });
     
     while (!jobManager.isIdle()) {
       System.out.println("Waiting for jobs...");
-      
-      if (jobManager.isSuspended()) {
-        System.out.println("Job manager is suspended, resuming...");
-        jobManager.resume();
-      }
       
       TimeUnit.SECONDS.sleep(10);
       
       if (System.currentTimeMillis() > timeout) {
         System.out.println("Timeout when waiting, termininating");
         return;
+      }
+      
+      if (jobManager.currentJob() != null) {
+        System.out.println(jobManager.currentJob().getName());
       }
     }
   }
