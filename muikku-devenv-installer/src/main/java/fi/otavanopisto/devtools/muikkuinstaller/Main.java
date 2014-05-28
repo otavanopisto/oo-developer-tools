@@ -46,10 +46,10 @@ public class Main {
         phases.add(new InstallJBossPhase());
         phases.add(new InstallEclipsePhase());
         phases.add(new InstallEclipsePluginsPhase());
-        phases.add(new ConfigureEclipsePhase());
         phases.add(new ConfigureJBossPhase());
         phases.add(new CloneGitRepositoryPhase());
         phases.add(new ImportEclipseProjectsPhase());
+        phases.add(new ConfigureEclipsePhase());
       } else {
         if (cmd.hasOption('D')) {
           phases.add(new CreateDatabasePhase());
@@ -63,9 +63,6 @@ public class Main {
         if (cmd.hasOption('E')) {
           phases.add(new InstallEclipsePluginsPhase());
         }
-        if (cmd.hasOption('c')) {
-          phases.add(new ConfigureEclipsePhase());
-        }
         if (cmd.hasOption('J')) {
           phases.add(new ConfigureJBossPhase());
         }
@@ -74,6 +71,9 @@ public class Main {
         }
         if (cmd.hasOption('i')) {
           phases.add(new ImportEclipseProjectsPhase());
+        }
+        if (cmd.hasOption('c')) {
+          phases.add(new ConfigureEclipsePhase());
         }
       }
 
