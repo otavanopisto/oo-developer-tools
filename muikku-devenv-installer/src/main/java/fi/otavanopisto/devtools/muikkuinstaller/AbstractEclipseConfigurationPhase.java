@@ -8,7 +8,7 @@ import org.apache.commons.lang3.SystemUtils;
 
 public abstract class AbstractEclipseConfigurationPhase extends InstallerPhase {
   
-  private static final String YELLOW_SHEEP_JAR = "yellow-sheep-project_1.0.0.201405190743.jar";
+  private static final String YELLOW_SHEEP_JAR = "yellow-sheep-project_1.0.0.201405271339.jar";
   private static final String ECLIPSE_EXECUTABLE_WINDOWS = "eclipsec.exe";
   private static final String ECLIPSE_EXECUTABLE_LINUX = "eclipse";
   private static final String ECLIPSE_EXECUTABLE_MAC = "eclipse";
