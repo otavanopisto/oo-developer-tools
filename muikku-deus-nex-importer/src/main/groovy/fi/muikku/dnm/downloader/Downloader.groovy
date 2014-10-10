@@ -48,6 +48,7 @@ import org.w3c.dom.bootstrap.DOMImplementationRegistry;
 import org.w3c.dom.ls.DOMImplementationLS;
 import org.w3c.dom.ls.LSOutput;
 import org.w3c.dom.ls.LSSerializer;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 public class Downloader {
@@ -356,7 +357,14 @@ public class Downloader {
    
     ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
     try {
-      return builder.parse(inputStream);
+      Reader reader = new InputStreamReader(inputStream, "UTF-8");
+      try {
+        InputSource is = new InputSource(reader);
+        is.setEncoding("UTF-8");
+        return builder.parse(is);
+      } finally {
+        reader.close();
+      }
     } finally {
       inputStream.close();
     }
@@ -371,7 +379,7 @@ public class Downloader {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     output.setByteStream(out);
     writer.write(document, output);
-    return new String(out.toByteArray());
+    return new String(out.toByteArray(), "UTF-8");
   }
 
   private static String getChildNodeValue(Element parent, String name) throws XPathExpressionException {
