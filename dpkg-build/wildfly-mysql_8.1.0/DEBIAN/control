@@ -1,0 +1,7 @@
+Package: wildfly-mysql
+Priority: optional
+Maintainer: otavanopisto
+Version: 8.1.0
+Architecture: all
+Depends: wildfly
+Description: MySQL module for Wildfly 8.1.0 Final
