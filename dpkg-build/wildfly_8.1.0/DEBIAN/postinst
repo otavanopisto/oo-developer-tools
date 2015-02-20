@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# modified version of https://gist.github.com/sukharevd/6087988
+
+INSTALL_DIR=/opt
+WILDFLY_FULL_DIR=$INSTALL_DIR/$WILDFLY_FILENAME
+WILDFLY_DIR=$INSTALL_DIR/wildfly
+ 
+WILDFLY_USER="wildfly"
+WILDFLY_SERVICE="wildfly"
+WILDFLY_STARTUP_TIMEOUT=240
+WILDFLY_SHUTDOWN_TIMEOUT=30
+
+useradd -s /sbin/nologin $WILDFLY_USER
+chown -R $WILDFLY_USER:$WILDFLY_USER $WILDFLY_DIR
+chown -R $WILDFLY_USER:$WILDFLY_USER $WILDFLY_DIR/
+ 
+echo "Registrating Wildfly as service..."
+cp $WILDFLY_DIR/bin/init.d/wildfly-init-debian.sh /etc/init.d/$WILDFLY_SERVICE
+sed -i -e 's,NAME=wildfly,NAME='$WILDFLY_SERVICE',g' /etc/init.d/$WILDFLY_SERVICE
+WILDFLY_SERVICE_CONF=/etc/default/$WILDFLY_SERVICE
+chmod 755 /etc/init.d/$WILDFLY_SERVICE
+ 
+if [ ! -z "$WILDFLY_SERVICE_CONF" ]; then
+    echo "Configuring service..."
+    echo JBOSS_HOME=\"$WILDFLY_DIR\" > $WILDFLY_SERVICE_CONF
+    echo JBOSS_USER=$WILDFLY_USER >> $WILDFLY_SERVICE_CONF
+    echo STARTUP_WAIT=$WILDFLY_STARTUP_TIMEOUT >> $WILDFLY_SERVICE_CONF
+    echo SHUTDOWN_WAIT=$WILDFLY_SHUTDOWN_TIMEOUT >> $WILDFLY_SERVICE_CONF
+fi
