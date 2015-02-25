@@ -1,0 +1,5 @@
+Maven script for creating a self-signed Java keystore
+
+Usage:
+
+mvn compile -Dhost=www.hostname.com -Dpassword=password [-Dkeyalg=ALG -Dkeysize=size -Dou=Organizational Unit -DL=Location -DST=State -Do=Organization ]  

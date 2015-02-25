@@ -1,0 +1,96 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <name>Self-Signed keystore</name>
+  <groupId>fi.internetix.tools</groupId>
+  <artifactId>ssk</artifactId>
+  <packaging>pom</packaging>
+  <version>0.0.1-SNAPSHOT</version>
+  
+  <profiles>
+    <profile>
+      <id>default</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <host></host>
+        <password></password>
+        <keystore>${host}.keystore</keystore>
+        <cert>${host}.crt</cert>
+        <keyalg>RSA</keyalg>
+        <keysize>2048</keysize>
+        <ou>Example Organizational Unit</ou>
+        <L>Example Location</L>
+        <ST>Example State</ST>
+        <o>Example Organization</o>
+        <c>EX</c>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>keytool-maven-plugin</artifactId>
+            <version>1.4</version>
+            <executions>
+              <execution>
+                <phase>generate-resources</phase>
+                <id>keyclean</id>
+                <goals>
+                  <goal>clean</goal>
+                </goals>
+                <configuration>
+                  <keystore>${keystore}</keystore>
+                </configuration>
+              </execution>
+              <execution>
+                <phase>generate-resources</phase>
+                <id>genkey</id>
+                <goals>
+                  <goal>generateKeyPair</goal>
+                </goals>
+                <configuration>
+                  <keystore>${keystore}</keystore>
+                  <dname>cn=${host}, ou=${ou}, L=${L}, ST=${ST}, o=${O}, c=${C}</dname>
+                  <storepass>${password}</storepass>
+                  <alias>${host}</alias>
+                  <keyalg>${keyalg}</keyalg>
+                  <keysize>${keysize}</keysize>
+                </configuration>
+              </execution>
+              <execution>
+                <phase>generate-resources</phase>
+                <id>exportkey</id>
+                <goals>
+                  <goal>exportCertificate</goal>
+                </goals>
+                <configuration>
+                  <keystore>${keystore}</keystore>
+                  <alias>${host}</alias>
+                  <file>${cert}</file>
+                  <storepass>${password}</storepass>
+                </configuration>
+              </execution>
+              <execution>
+                <phase>generate-resources</phase>
+                <id>importkey</id>
+                <goals>
+                  <goal>importCertificate</goal>
+                </goals>
+                <configuration>
+                  <keystore>${keystore}</keystore>
+                  <alias>root</alias>
+                  <file>${cert}</file>
+                  <storepass>${password}</storepass>
+                  <noprompt>true</noprompt>
+                  <trustcacerts>true</trustcacerts>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          
+        </plugins>
+      </build> 
+    </profile>
+    
+  </profiles>
+</project>
