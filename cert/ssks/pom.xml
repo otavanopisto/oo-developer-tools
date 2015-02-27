@@ -5,7 +5,6 @@
   <artifactId>ssk</artifactId>
   <packaging>pom</packaging>
   <version>0.0.1-SNAPSHOT</version>
-  
   <profiles>
     <profile>
       <id>default</id>
@@ -16,7 +15,10 @@
         <host></host>
         <password></password>
         <keystore>${host}.keystore</keystore>
-        <cert>${host}.crt</cert>
+        <x509>${host}.x509</x509>
+        <p12>${host}.p12</p12>
+        <cer>${host}.cer</cer>
+        <key>${host}.key</key>
         <keyalg>RSA</keyalg>
         <keysize>2048</keysize>
         <ou>Example Organizational Unit</ou>
@@ -44,6 +46,16 @@
               </execution>
               <execution>
                 <phase>generate-resources</phase>
+                <id>p12clean</id>
+                <goals>
+                  <goal>clean</goal>
+                </goals>
+                <configuration>
+                  <keystore>${p12}</keystore>
+                </configuration>
+              </execution>
+              <execution>
+                <phase>generate-resources</phase>
                 <id>genkey</id>
                 <goals>
                   <goal>generateKeyPair</goal>
@@ -66,7 +78,7 @@
                 <configuration>
                   <keystore>${keystore}</keystore>
                   <alias>${host}</alias>
-                  <file>${cert}</file>
+                  <file>${x509}</file>
                   <storepass>${password}</storepass>
                 </configuration>
               </execution>
@@ -79,15 +91,101 @@
                 <configuration>
                   <keystore>${keystore}</keystore>
                   <alias>root</alias>
-                  <file>${cert}</file>
+                  <file>${x509}</file>
                   <storepass>${password}</storepass>
                   <noprompt>true</noprompt>
                   <trustcacerts>true</trustcacerts>
                 </configuration>
               </execution>
+              <execution>
+                <phase>generate-resources</phase>
+                <id>exportp12</id>
+                <goals>
+                  <goal>importKeystore</goal>
+                </goals>
+                <configuration>
+                  <srckeystore>${keystore}</srckeystore>
+                  <srcstorepass>${password}</srcstorepass>
+                  <srcstoretype>jks</srcstoretype>
+                  <destkeystore>${p12}</destkeystore>
+                  <deststorepass>${password}</deststorepass>
+                  <deststoretype>pkcs12</deststoretype>
+                  <srcalias>${host}</srcalias>
+                </configuration>
+              </execution>
             </executions>
           </plugin>
-          
+   
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.3.2</version>
+            <executions>
+              <execution>
+                <id>exportkey</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>openssl</executable>
+                  <arguments>
+                    <argument>pkcs12</argument>                  
+                    <argument>-in</argument>                  
+                    <argument>${p12}</argument>                  
+                    <argument>-nocerts</argument>                  
+                    <argument>-nodes</argument>                      
+                    <argument>-out</argument>                  
+                    <argument>${key}</argument>                
+                    <argument>-password</argument>             
+                    <argument>pass:${password}</argument>  
+                  </arguments>
+                </configuration>
+              </execution>
+              
+              <execution>
+                <id>exportcer</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>openssl</executable>
+                  <arguments>
+                    <argument>pkcs12</argument>       
+                    <argument>-in</argument>       
+                    <argument>${p12}</argument>       
+                    <argument>-clcerts</argument>       
+                    <argument>-nokeys</argument>       
+                    <argument>-out</argument>       
+                    <argument>${cer}</argument>
+                    <argument>-passin</argument>             
+                    <argument>pass:${password}</argument>       
+                  </arguments>
+                </configuration>
+              </execution>
+              
+              <execution>
+                <id>removekeypassword</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>openssl</executable>
+                  <arguments>
+                    <argument>rsa</argument>       
+                    <argument>-in</argument>       
+                    <argument>${key}</argument>       
+                    <argument>-out</argument>       
+                    <argument>${key}</argument>    
+                    <argument>-passin</argument>             
+                    <argument>pass:${password}</argument>    
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
       </build> 
     </profile>

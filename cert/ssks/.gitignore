@@ -1,2 +1,6 @@
 /*.crt
+/*.cer
+/*.key
+/*.x509
+/*.p12
 /*.keystore
