@@ -62,7 +62,7 @@
                 </goals>
                 <configuration>
                   <keystore>${keystore}</keystore>
-                  <dname>cn=${host}, ou=${ou}, L=${L}, ST=${ST}, o=${O}, c=${C}</dname>
+                  <dname>cn=${host}, ou=${ou}, L=${L}, ST=${ST}, o=${o}, c=${c}</dname>
                   <storepass>${password}</storepass>
                   <alias>${host}</alias>
                   <keyalg>${keyalg}</keyalg>
