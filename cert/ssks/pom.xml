@@ -35,7 +35,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>keytool-maven-plugin</artifactId>
-            <version>1.4</version>
+            <version>1.5</version>
             <executions>
               <execution>
                 <phase>generate-resources</phase>
@@ -118,6 +118,8 @@
                   <deststorepass>${password}</deststorepass>
                   <deststoretype>pkcs12</deststoretype>
                   <srcalias>${host}</srcalias>
+                  <noprompt>true</noprompt>
+                  <verbose>true</verbose>
                 </configuration>
               </execution>
             </executions>
@@ -139,13 +141,15 @@
                   <arguments>
                     <argument>pkcs12</argument>                  
                     <argument>-in</argument>                  
-                    <argument>${p12}</argument>                  
-                    <argument>-nocerts</argument>                  
+                    <argument>${p12}</argument>
+                    <!-- 
+                    <argument>-nocerts</argument> 
+                    -->                  
                     <argument>-nodes</argument>                      
                     <argument>-out</argument>                  
                     <argument>${key}</argument>                
                     <argument>-password</argument>             
-                    <argument>pass:${password}</argument>  
+                    <argument>pass:${password}</argument>
                   </arguments>
                 </configuration>
               </execution>
@@ -187,7 +191,7 @@
                     <argument>-out</argument>       
                     <argument>${key}</argument>    
                     <argument>-passin</argument>             
-                    <argument>pass:${password}</argument>    
+                    <argument>pass:${password}</argument>   
                   </arguments>
                 </configuration>
               </execution>
