@@ -1,7 +1,7 @@
 Package: wildfly
 Priority: optional
 Maintainer: otavanopisto
-Version: 8.1.0.1
+Version: 8.1.0
 Architecture: all
 Depends: openjdk-7-jdk
 Description: Wildfly 8.1.0 Final

@@ -1,6 +1,0 @@
-#!/bin/sh
-set -e
-if [ -x "/etc/init.d/wildfly" ]; then
-  invoke-rc.d wildfly stop || true
-fi
-rm -fR /opt/wildfly/
